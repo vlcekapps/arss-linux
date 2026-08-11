@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from xml.parsers import expat
 
 from .feed import is_supported_web_url
-from .models import FeedSubscription
+from .models import FeedSubscription, ParsedFeed
 
 
 MAXIMUM_OPML_BYTES: Final = 8 * 1024 * 1024
@@ -137,6 +137,21 @@ def merge_subscriptions(
         known_urls.add(subscription.url)
         added.append(subscription)
     return tuple(added), existing_snapshot + tuple(added)
+
+
+def accept_podcast_import(
+    subscription: FeedSubscription,
+    parsed_feed: ParsedFeed,
+) -> FeedSubscription | None:
+    """Return the original OPML item when its feed contains playable audio.
+
+    Fetching the feed validates that this really is a podcast, but must not
+    replace a title the user deliberately stored in OPML.
+    """
+
+    if any(article.media_url for article in parsed_feed.articles):
+        return subscription
+    return None
 
 
 class _OpmlHandler:

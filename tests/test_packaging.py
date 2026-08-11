@@ -43,6 +43,15 @@ def render_launcher_template(relative_path: str) -> str:
 
 
 class PackagingContractTest(unittest.TestCase):
+    def test_meson_installs_every_runtime_python_module(self) -> None:
+        meson = (ROOT / "meson.build").read_text(encoding="utf-8")
+        installed = set(re.findall(r"'(arss/[^']+\.py)'", meson))
+        expected = {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "arss").glob("*.py")
+        }
+        self.assertEqual(expected, installed)
+
     def test_release_versions_match(self) -> None:
         meson = (ROOT / "meson.build").read_text(encoding="utf-8")
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")

@@ -3,12 +3,13 @@ from __future__ import annotations
 from io import BytesIO
 import unittest
 
-from arss.models import FeedSubscription
+from arss.models import FeedArticle, FeedSubscription, ParsedFeed
 from arss.opml import (
     MAXIMUM_OUTLINES,
     MAXIMUM_TITLE_CODE_POINTS,
     OpmlLimitError,
     OpmlSecurityError,
+    accept_podcast_import,
     merge_subscriptions,
     read_opml,
     write_opml,
@@ -100,6 +101,36 @@ class OpmlTest(unittest.TestCase):
                 FeedSubscription("New", "https://example.test/new"),
             ),
             merged,
+        )
+
+    def test_podcast_validation_preserves_the_custom_opml_title(self) -> None:
+        imported = FeedSubscription(
+            "Můj vlastní název",
+            "https://example.test/podcast.xml",
+        )
+        parsed = ParsedFeed(
+            "Název vydavatele",
+            (
+                FeedArticle(
+                    "Epizoda",
+                    "https://example.test/episode",
+                    media_url="https://example.test/episode.mp3",
+                ),
+            ),
+        )
+
+        accepted = accept_podcast_import(imported, parsed)
+
+        self.assertIs(imported, accepted)
+        self.assertEqual("Můj vlastní název", accepted.title)
+        self.assertIsNone(
+            accept_podcast_import(
+                imported,
+                ParsedFeed(
+                    "Název vydavatele",
+                    (FeedArticle("Článek", "https://example.test/article"),),
+                ),
+            )
         )
 
 

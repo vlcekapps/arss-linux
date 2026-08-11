@@ -125,7 +125,7 @@ ARSS_RPM_RELEASE=2 ./tools/build-rpm.sh
 
 Jiné umístění výsledků lze zvolit pomocí `ARSS_RPM_OUTPUT`. Pro opakovatelný
 obsah zdrojového archivu je výchozí `SOURCE_DATE_EPOCH` pevně svázán s
-vydáním 1.6.13; při nové verzi je nutné aktualizovat jej spolu s datem
+vydáním 1.6.14; při nové verzi je nutné aktualizovat jej spolu s datem
 vydání. Samotné RPM kontejnery nemusejí mít mezi dvěma buildy shodný SHA-256,
 protože RPM 6 ukládá do SRPM expandovanou dočasnou cestu; normalizovaný
 zdrojový archiv a instalovaný payload jsou však shodné.
@@ -138,8 +138,13 @@ python3 -m unittest discover -s tests -v
 ```
 
 Současná automatická sada je deterministická a nepřistupuje k síti. Samostatné
-živé testy veřejných endpointů zatím v repozitáři nejsou; případné budoucí testy
-musí být výslovně zapnuté pomocí `ARSS_RUN_LIVE_TESTS=1`. V grafické uživatelské
+živé testy prvotních feedů a podcastových katalogů lze spustit pouze výslovně:
+
+```bash
+ARSS_RUN_LIVE_TESTS=1 python3 -m unittest discover -s live_tests -v
+```
+
+Tyto testy nejsou součástí běžné sady ani RPM `%check`. V grafické uživatelské
 relaci lze navíc spustit `python3 tools/gui_smoke.py` a
 `python3 tools/large_text_smoke.py` (22 pt, angličtina i čeština, šířka 320 px)
 a `python3 tools/accessibility_smoke.py`. Před vydáním je nutné celé rozhraní

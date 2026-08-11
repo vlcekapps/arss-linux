@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import tempfile
 import threading
 from types import SimpleNamespace
@@ -36,6 +37,19 @@ class DesktopStateTest(unittest.TestCase):
         self.assertTrue(data_file("rss_directory.opml").is_file())
         self.assertTrue(data_file("style.css").is_file())
         self.assertFalse(data_file("sounds").exists())
+
+    def test_styles_keep_interactive_controls_at_least_48_pixels_high(self) -> None:
+        stylesheet = data_file("style.css").read_text(encoding="utf-8")
+        match = re.search(
+            r"(?s)([^{}]+)\{\s*min-height:\s*48px;\s*\}",
+            stylesheet,
+        )
+        self.assertIsNotNone(match)
+        selectors = {selector.strip() for selector in match.group(1).split(",")}
+        self.assertLessEqual(
+            {"button", "entry", "dropdown", "checkbutton", "switch", "scale", "row"},
+            selectors,
+        )
 
 
 class NotificationTest(unittest.TestCase):
@@ -176,6 +190,7 @@ class NotificationTest(unittest.TestCase):
     def test_exported_play_action_rejects_a_local_media_target(self) -> None:
         window = SimpleNamespace(
             t=lambda key, **_values: key,
+            select_page=Mock(),
             open_player=Mock(),
         )
         harness = SimpleNamespace(activate=Mock(), window=window)
@@ -187,10 +202,12 @@ class NotificationTest(unittest.TestCase):
             ArssApplication._play_episode(harness, Mock(), target)
         show_alert.assert_called_once_with(window, "error", "invalid_address")
         window.open_player.assert_not_called()
+        window.select_page.assert_not_called()
 
     def test_exported_play_action_uses_the_single_player_coordinator(self) -> None:
         window = SimpleNamespace(
             t=lambda key, **_values: key,
+            select_page=Mock(),
             open_player=Mock(),
         )
         harness = SimpleNamespace(activate=Mock(), window=window)
@@ -206,6 +223,7 @@ class NotificationTest(unittest.TestCase):
 
         ArssApplication._play_episode(harness, Mock(), target)
 
+        window.select_page.assert_called_once_with("podcast")
         window.open_player.assert_called_once_with(
             FeedArticle(
                 title="Episode",
@@ -213,6 +231,35 @@ class NotificationTest(unittest.TestCase):
                 media_url="https://example.test/audio.mp3",
                 duration_text="1:00",
             )
+        )
+
+    def test_exported_play_action_selects_podcasts_before_opening_player(self) -> None:
+        events: list[tuple[str, str]] = []
+        window = SimpleNamespace(
+            t=lambda key, **_values: key,
+            select_page=Mock(
+                side_effect=lambda page: events.append(("select", page))
+            ),
+            open_player=Mock(
+                side_effect=lambda _episode: events.append(("open", "player"))
+            ),
+        )
+        harness = SimpleNamespace(activate=Mock(), window=window)
+        target = GLib.Variant(
+            "(ssss)",
+            (
+                "Episode",
+                "https://example.test/item",
+                "https://example.test/audio.mp3",
+                "1:00",
+            ),
+        )
+
+        ArssApplication._play_episode(harness, Mock(), target)
+
+        self.assertEqual(
+            [("select", "podcast"), ("open", "player")],
+            events,
         )
 
 

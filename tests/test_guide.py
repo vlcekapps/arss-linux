@@ -84,6 +84,16 @@ EXPECTED_TELEVISION_STATIONS = (
     ('sms:Oneplay Sport 2', 'Oneplay Sport 2'),
     ('sms:Oneplay Sport 3', 'Oneplay Sport 3'),
     ('sms:Oneplay Sport 4', 'Oneplay Sport 4'),
+    ('sms:Oneplay Sport MD1', 'Oneplay Sport MD1'),
+    ('sms:Oneplay Sport MD2', 'Oneplay Sport MD2'),
+    ('sms:Oneplay Sport MD3', 'Oneplay Sport MD3'),
+    ('sms:Oneplay Sport MD4', 'Oneplay Sport MD4'),
+    ('sms:Oneplay Sport MD5', 'Oneplay Sport MD5'),
+    ('sms:Oneplay Sport MD6', 'Oneplay Sport MD6'),
+    ('sms:Oneplay Sport MD7', 'Oneplay Sport MD7'),
+    ('sms:Oneplay Sport MD8', 'Oneplay Sport MD8'),
+    ('sms:Oneplay Sport MD9', 'Oneplay Sport MD9'),
+    ('sms:Oneplay Sport MD10', 'Oneplay Sport MD10'),
     ('centrum:181', 'Jednotka'),
     ('centrum:180', 'Dvojka'),
     ('centrum:183', 'Markíza'),
@@ -414,7 +424,7 @@ class GuideRepositoryTests(unittest.TestCase):
             EXPECTED_TELEVISION_SMS_NAMES, TELEVISION_SMS_NAMES
         )
         self.assertEqual(EXPECTED_RADIO_SMS_NAMES, RADIO_SMS_NAMES)
-        self.assertEqual(107, len(television))
+        self.assertEqual(117, len(television))
         self.assertEqual(63, len(radio))
         for stations in (television, radio):
             ids = [station.id for station in stations]

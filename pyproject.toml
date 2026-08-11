@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arss-linux"
-version = "1.6.13"
+version = "1.6.14"
 description = "Accessible GTK 4 RSS, podcast and Czech TV/radio guide reader"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -12,7 +12,9 @@ from arss.models import FeedArticle, FeedSubscription
 from arss.ui import (
     MAIN_PAGE_NAMES,
     THANK_AUTHOR_URL,
+    GuidePage,
     MainWindow,
+    PlayerWindow,
     SettingsPage,
     SubscriptionPage,
     application_version,
@@ -63,13 +65,13 @@ class UiHelperTest(unittest.TestCase):
         )
 
     def test_version_fallback_uses_the_installed_package_version(self) -> None:
-        self.assertEqual("1.6.13", application_version(SimpleNamespace()))
+        self.assertEqual("1.6.14", application_version(SimpleNamespace()))
         self.assertEqual(
             "custom",
             application_version(SimpleNamespace(version="custom")),
         )
 
-    def test_unknown_duration_disables_timeline_seek_controls(self) -> None:
+    def test_unknown_duration_disables_only_the_timeline(self) -> None:
         self.assertEqual(
             (True, False),
             playback_control_sensitivity(
@@ -87,6 +89,69 @@ class UiHelperTest(unittest.TestCase):
             playback_control_sensitivity(
                 SimpleNamespace(phase="preparing", duration_ms=60_000)
             ),
+        )
+
+    def test_unknown_duration_keeps_relative_seek_buttons_enabled(self) -> None:
+        harness = SimpleNamespace(
+            parent_window=SimpleNamespace(t=Translator("en")),
+            status=Mock(),
+            scale=Mock(),
+            seek_back=Mock(),
+            play=Mock(),
+            seek_forward=Mock(),
+            volume=Mock(),
+            speed=Mock(),
+            position=Mock(),
+            _sync_volume=Mock(),
+            _sync_speed=Mock(),
+        )
+        state = SimpleNamespace(
+            phase="ready",
+            position_ms=0,
+            duration_ms=0,
+            volume=1.0,
+            speed=1.0,
+            audio_session_denied=False,
+            speed_change_failed=False,
+            error_message=None,
+        )
+
+        PlayerWindow._render(harness, state)
+
+        harness.scale.set_sensitive.assert_called_once_with(False)
+        harness.seek_back.set_sensitive.assert_called_once_with(True)
+        harness.play.set_sensitive.assert_called_once_with(True)
+        harness.seek_forward.set_sensitive.assert_called_once_with(True)
+
+    def test_audio_session_denial_has_localized_priority_status(self) -> None:
+        harness = SimpleNamespace(
+            parent_window=SimpleNamespace(t=Translator("cs")),
+            status=Mock(),
+            scale=Mock(),
+            seek_back=Mock(),
+            play=Mock(),
+            seek_forward=Mock(),
+            volume=Mock(),
+            speed=Mock(),
+            position=Mock(),
+            _sync_volume=Mock(),
+            _sync_speed=Mock(),
+        )
+        state = SimpleNamespace(
+            phase="ready",
+            position_ms=0,
+            duration_ms=60_000,
+            volume=1.0,
+            speed=1.0,
+            audio_session_denied=True,
+            speed_change_failed=True,
+            error_message="must not be exposed",
+        )
+
+        PlayerWindow._render(harness, state)
+
+        harness.status.set_status.assert_called_once_with(
+            "Zvuk právě používá jiná aplikace."
         )
 
     def test_filtered_removal_chooses_only_a_still_visible_successor(self) -> None:
@@ -130,6 +195,52 @@ class UiHelperTest(unittest.TestCase):
         self.assertIn("exclusively controls the system notification sound", help_text)
         self.assertIn("ordered by broadcaster", help_text)
         self.assertIn("Shift+Tab", help_text)
+        self.assertIn("timeline slider", help_text)
+
+    def test_every_supported_interval_has_an_exact_localized_label(self) -> None:
+        expected = {
+            "cs": (
+                "Ručně",
+                "Každou minutu",
+                "Každých 5 minut",
+                "Každých 10 minut",
+                "Každých 15 minut",
+                "Každých 30 minut",
+                "Každých 45 minut",
+                "Každou hodinu",
+                "Každé 3 hodiny",
+                "Každých 6 hodin",
+                "Každých 12 hodin",
+            ),
+            "en": (
+                "Manually",
+                "Every minute",
+                "Every 5 minutes",
+                "Every 10 minutes",
+                "Every 15 minutes",
+                "Every 30 minutes",
+                "Every 45 minutes",
+                "Every hour",
+                "Every 3 hours",
+                "Every 6 hours",
+                "Every 12 hours",
+            ),
+        }
+        self.assertEqual(
+            set(SettingsPage.INTERVALS), set(SettingsPage.INTERVAL_MESSAGE_KEYS)
+        )
+        for language, labels in expected.items():
+            page = SimpleNamespace(
+                window=SimpleNamespace(t=Translator(language)),
+                INTERVAL_MESSAGE_KEYS=SettingsPage.INTERVAL_MESSAGE_KEYS,
+            )
+            self.assertEqual(
+                labels,
+                tuple(
+                    SettingsPage._interval_label(page, minutes)
+                    for minutes in SettingsPage.INTERVALS
+                ),
+            )
 
     def test_only_absolute_http_addresses_are_external_web_links(self) -> None:
         self.assertTrue(valid_web_url("https://example.test/path"))
@@ -216,6 +327,43 @@ class UiHelperTest(unittest.TestCase):
         )
         self.assertFalse(
             has_unknown_audio_description(SimpleNamespace(id="rozhlas:test"), unknown)
+        )
+
+    def test_station_selection_immediately_persists_the_sorted_station_id(self) -> None:
+        state = SimpleNamespace(set=Mock())
+        page = SimpleNamespace(
+            _station_updating=False,
+            stations=[
+                SimpleNamespace(id="sms:Oneplay Sport 1", name="Oneplay Sport 1"),
+                SimpleNamespace(id="sms:Oneplay Sport MD10", name="Oneplay Sport MD10"),
+            ],
+            _medium_value=lambda: "television",
+            window=SimpleNamespace(state=state),
+        )
+        dropdown = SimpleNamespace(get_selected=lambda: 1)
+
+        GuidePage._station_changed(page, dropdown)
+
+        state.set.assert_called_once_with(
+            "guide_television_station_id",
+            "sms:Oneplay Sport MD10",
+        )
+
+        state.set.reset_mock()
+        page._station_updating = True
+        GuidePage._station_changed(page, dropdown)
+        state.set.assert_not_called()
+
+        page._station_updating = False
+        page._medium_value = lambda: "radio"
+        page.stations = [SimpleNamespace(id="rozhlas:radiozurnal")]
+        GuidePage._station_changed(
+            page,
+            SimpleNamespace(get_selected=lambda: 0),
+        )
+        state.set.assert_called_once_with(
+            "guide_radio_station_id",
+            "rozhlas:radiozurnal",
         )
 
     def test_stable_main_pages_and_specific_author_url(self) -> None:
@@ -419,7 +567,11 @@ class UiHelperTest(unittest.TestCase):
         page._set_background_switch.assert_called_once_with(False)
         page._update_background_description.assert_called_once_with(False)
         message = page.background_status.set_status.call_args_list[-1].args[0]
-        self.assertIn("systemd failed", message)
+        self.assertEqual(
+            "The background-check setting could not be changed.",
+            message,
+        )
+        self.assertNotIn("systemd failed", message)
         page.background_status.announce.assert_called_once()
         self.assertEqual(
             Gtk.AccessibleAnnouncementPriority.HIGH,
@@ -448,7 +600,11 @@ class UiHelperTest(unittest.TestCase):
         page._set_background_switch.assert_called_once_with(False)
         page._update_background_description.assert_called_once_with(False)
         message = page.background_status.set_status.call_args.args[0]
-        self.assertIn("timer sync failed", message)
+        self.assertEqual(
+            "The background-check setting could not be changed.",
+            message,
+        )
+        self.assertNotIn("timer sync failed", message)
         self.assertFalse(
             page.background_status.set_status.call_args.kwargs["announce"]
         )

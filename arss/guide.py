@@ -1366,6 +1366,7 @@ TELEVISION_FALLBACK: tuple[GuideStation, ...] = (
     _tv("16", "Eurosport"),
     _tv("25", "Eurosport 2"),
     *tuple(_sms_tv(f"Oneplay Sport {number}") for number in range(1, 5)),
+    *tuple(_sms_tv(f"Oneplay Sport MD{number}") for number in range(1, 11)),
     _tv("181", "Jednotka"),
     _tv("180", "Dvojka"),
     _tv("183", "Markíza"),

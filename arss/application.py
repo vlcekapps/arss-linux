@@ -438,6 +438,7 @@ class ArssApplication(Adw.Application):
                 self.window.t("invalid_address"),
             )
             return
+        self.window.select_page("podcast")
         episode = FeedArticle(
             title=title,
             url=article_url,
@@ -450,8 +451,8 @@ class ArssApplication(Adw.Application):
         translator = Translator("system")
         try:
             self.state.back_up_and_reset_preferences()
-        except Exception as error:
-            detail = translator("recovery_failed", detail=str(error))
+        except Exception:
+            detail = translator("recovery_failed")
             status.set_status(detail)
             status.announce(detail, Gtk.AccessibleAnnouncementPriority.HIGH)
             return
