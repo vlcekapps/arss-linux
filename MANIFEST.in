@@ -1,0 +1,19 @@
+include LICENSE
+include README.md
+include meson.build
+include meson_options.txt
+include pyproject.toml
+include run.sh
+include tools/build-rpm.sh
+
+recursive-include arss/data *
+prune arss/data/sounds
+recursive-include data *
+recursive-include docs *.md
+recursive-include packaging *.spec
+recursive-include tests *.py
+recursive-include tests/fixtures *
+recursive-include tools *.py
+
+global-exclude __pycache__
+global-exclude *.py[cod]

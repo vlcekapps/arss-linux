@@ -1,0 +1,8 @@
+{
+  "timestamp":"2026-07-22T10:00:00+02:00",
+  "data":[
+    {"id":"radiozurnal","name":"Radiožurnál","type":"allover"},
+    {"id":"dvojka","name":"Dvojka","type":"allover"},
+    {"id":"","name":"Neplatná"}
+  ]
+}

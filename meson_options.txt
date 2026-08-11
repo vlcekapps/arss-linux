@@ -1,0 +1,6 @@
+option(
+  'systemd_user_unit_dir',
+  type: 'string',
+  value: '',
+  description: 'systemd user unit installation directory (defaults to datadir/systemd/user)',
+)

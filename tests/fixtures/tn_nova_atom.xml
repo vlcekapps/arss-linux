@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Zpravodajství</title>
+  <link href="https://tn.nova.cz/"></link>
+  <link href="https://tn.nova.cz/feed/atom/tnnova-2" rel="self" type="application/atom+xml"></link>
+  <updated>2026-07-22T13:14:00+02:00</updated>
+  <author><name>TN.cz</name></author>
+  <id>urn:uuid:feed-tn-fixture</id>
+
+  <entry>
+    <title>&lt;em&gt;Testovací&lt;/em&gt; článek &amp;amp; zprávy</title>
+    <link href="https://tn.nova.cz/zpravodajstvi/clanek/fixture-one"></link>
+    <id>urn:uuid:tn-entry-one</id>
+    <content type="html">&lt;p&gt;Escapovaný obsah článku.&lt;/p&gt;</content>
+    <updated>2026-07-22T13:14:00+02:00</updated>
+    <summary type="html"><![CDATA[Souhrn s <strong>HTML</strong> obsahem.]]></summary>
+    <link rel="enclosure" href="https://nova-ott-images-tn.ssl.cdn.cra.cz/fixture-one.jpg" type="image/jpeg"></link>
+    <category term="Zpravodajství"></category>
+  </entry>
+
+  <entry>
+    <title>Druhá položka bez content</title>
+    <link href="/zpravodajstvi/clanek/fixture-two"></link>
+    <id>urn:uuid:tn-entry-two</id>
+    <updated>2026-07-22T13:10:00+02:00</updated>
+    <summary type="html"><![CDATA[Položka má pouze summary.]]></summary>
+    <link rel="enclosure" href="https://nova-ott-images-tn.ssl.cdn.cra.cz/fixture-two.jpg" type="image/jpeg"></link>
+    <category term="Zpravodajství"></category>
+  </entry>
+</feed>

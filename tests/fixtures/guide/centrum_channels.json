@@ -1,0 +1,5 @@
+{
+  "1": {"id":"1","name":"ČT1","category":"zakladni-ceske","slug":"ct1"},
+  "3": {"id":"3","name":"Nova","category":"zakladni-ceske","slug":"nova"},
+  "broken": {"id":"","name":""}
+}

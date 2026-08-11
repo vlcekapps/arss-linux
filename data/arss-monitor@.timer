@@ -1,0 +1,14 @@
+[Unit]
+Description=Schedule ARSS background %i feed checks
+Documentation=https://github.com/vlcekapps/arss-linux
+
+[Timer]
+# This harmless fallback is replaced by a per-user drop-in before ARSS enables
+# the timer. The headless command also refuses network access without opt-in.
+OnCalendar=daily
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

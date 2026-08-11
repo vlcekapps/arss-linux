@@ -1,0 +1,16 @@
+[Desktop Entry]
+Name=ARSS
+GenericName=Feed Reader
+GenericName[cs]=Čtečka kanálů
+Comment=Accessible RSS, podcast and programme reader
+Comment[cs]=Přístupná čtečka RSS, podcastů a programu
+Exec="@PYTHON@" "@ARSS_LAUNCHER@"
+DBusActivatable=true
+Icon=cz.pvlcek.arss
+Terminal=false
+Type=Application
+Categories=Network;News;
+Keywords=RSS;Atom;Podcast;TV;Radio;Accessibility;
+Keywords[cs]=RSS;Atom;Podcast;TV;Rádio;Přístupnost;
+StartupNotify=true
+X-GNOME-UsesNotifications=true

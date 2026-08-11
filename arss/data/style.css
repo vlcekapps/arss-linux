@@ -1,0 +1,25 @@
+button,
+entry,
+dropdown {
+  min-height: 48px;
+}
+
+button:focus-visible,
+entry:focus-visible,
+dropdown:focus-visible,
+row:focus-visible {
+  outline: 3px solid @accent_color;
+  outline-offset: 2px;
+}
+
+.content-frame {
+  padding: 18px;
+}
+
+.subscription-title {
+  font-weight: 600;
+}
+
+.ad-badge {
+  font-weight: 700;
+}

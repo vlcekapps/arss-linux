@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>cz.pvlcek.arss</id>
+  <name>ARSS</name>
+  <summary>Accessible RSS, podcast and programme reader</summary>
+  <summary xml:lang="cs">Přístupná čtečka RSS, podcastů a programu</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>ARSS reads RSS and Atom feeds, plays podcasts and shows Czech television and radio schedules using a keyboard- and screen-reader-accessible GTK 4 interface.</p>
+    <p xml:lang="cs">ARSS čte RSS a Atom kanály, přehrává podcasty a zobrazuje český televizní a rozhlasový program v rozhraní GTK 4 přístupném z klávesnice i čtečky obrazovky.</p>
+  </description>
+  <launchable type="desktop-id">cz.pvlcek.arss.desktop</launchable>
+  <provides>
+    <binary>arss</binary>
+  </provides>
+  <url type="homepage">https://github.com/vlcekapps/arss-linux</url>
+  <developer id="cz.pvlcek">
+    <name>Pavel Vlček</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.6.12" date="2026-08-11" type="stable">
+      <description>
+        <p>Removes bundled notification audio, delegates audible feedback to GNOME, and releases the clean Linux source under GPL-3.0-or-later.</p>
+      </description>
+    </release>
+    <release version="1.6.11" date="2026-08-03" type="stable">
+      <description>
+        <p>Keeps the GNOME application launcher valid while an RPM upgrade replaces ARSS's command-line launcher.</p>
+      </description>
+    </release>
+    <release version="1.6.10" date="2026-08-02" type="stable">
+      <description>
+        <p>Completes the Linux accessibility guide audit by naming custom menus, reflowing the interface at 200% text, and preserving focused full-text main tabs.</p>
+      </description>
+    </release>
+    <release version="1.6.9" date="2026-08-02" type="stable">
+      <description>
+        <p>Adds Nova Sport 3 through 6 from the verified SMS.cz programme source, with clean display names and stable provider identifiers.</p>
+      </description>
+    </release>
+    <release version="1.6.8" date="2026-08-02" type="stable">
+      <description>
+        <p>Groups television stations by broadcaster with accessible native search, preserves station IDs when opening programmes, and moves subscription actions into named RSS and podcast menus.</p>
+      </description>
+    </release>
+    <release version="1.6.7" date="2026-08-02" type="stable">
+      <description>
+        <p>Removes an ambiguously announced switch mnemonic while preserving native keyboard and screen-reader operation.</p>
+      </description>
+    </release>
+    <release version="1.6.6" date="2026-08-02" type="stable">
+      <description>
+        <p>Adds accessible podcast volume, keeps playback running across focus changes, and makes standalone programme and empty-list text keyboard-readable.</p>
+      </description>
+    </release>
+    <release version="1.6.5" date="2026-08-02" type="stable">
+      <description>
+        <p>Restores native arrow-key navigation in content lists without duplicate focus stops.</p>
+      </description>
+    </release>
+    <release version="1.6.4" date="2026-08-02" type="stable">
+      <description>
+        <p>Completes Android 1.6.4 feature parity, accessibility fixes and native GNOME desktop integration.</p>
+      </description>
+    </release>
+  </releases>
+</component>

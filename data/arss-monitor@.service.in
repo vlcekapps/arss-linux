@@ -1,0 +1,11 @@
+[Unit]
+Description=ARSS background %i feed check
+Documentation=https://github.com/vlcekapps/arss-linux
+
+[Service]
+Type=oneshot
+ExecStart="@PYTHON@" "@ARSS_LAUNCHER@" --background-check %i
+TimeoutStartSec=15min
+TimeoutStopSec=20s
+KillSignal=SIGTERM
+Nice=10

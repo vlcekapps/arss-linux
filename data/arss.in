@@ -1,0 +1,4 @@
+#!@PYTHON@
+from arss.__main__ import main
+
+raise SystemExit(main())

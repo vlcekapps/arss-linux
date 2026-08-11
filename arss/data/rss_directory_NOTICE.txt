@@ -1,0 +1,5 @@
+The bundled RSS suggestions are derived from Awesome RSS Feeds by Plenary.
+Source commit: 3a7a9e28943d28b8acb6d9197fb168a8be5267f6
+Source: https://github.com/plenaryapp/awesome-rss-feeds
+License: CC0 1.0 Universal
+License text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
