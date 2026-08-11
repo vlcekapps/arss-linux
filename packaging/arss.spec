@@ -1,4 +1,4 @@
-%{!?arss_release:%global arss_release 1}
+%{!?arss_release:%global arss_release 2}
 
 Name:           arss
 Version:        1.6.12
@@ -72,6 +72,10 @@ systemd-analyze verify redhat-linux-build/arss-monitor@.service data/arss-monito
 %doc %{_datadir}/doc/arss-linux/desktop-integration.md
 
 %changelog
+* Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.12-2
+- Keep LICENSE canonical so repository hosts detect GNU GPL version 3
+- Retain the GPL-3.0-or-later choice in project and package metadata
+
 * Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.12-1
 - Remove bundled notification audio and delegate sound policy to GNOME
 - Publish the clean Linux source under GPL-3.0-or-later

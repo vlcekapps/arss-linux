@@ -120,7 +120,7 @@ Fedora release lze pro další sestavení stejné verze zvýšit například
 příkazem:
 
 ```bash
-ARSS_RPM_RELEASE=2 ./tools/build-rpm.sh
+ARSS_RPM_RELEASE=3 ./tools/build-rpm.sh
 ```
 
 Jiné umístění výsledků lze zvolit pomocí `ARSS_RPM_OUTPUT`. Pro opakovatelný
