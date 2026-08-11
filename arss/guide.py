@@ -88,51 +88,7 @@ class GuideStation:
             raise ValueError("Station name must not be blank.")
 
 
-_TELEVISION_FAMILY_STATION_IDS = (
-    (
-        "centrum:1",
-        "centrum:2",
-        "centrum:24",
-        "centrum:18",
-        "centrum:357",
-        "centrum:358",
-    ),
-    (
-        "centrum:3",
-        "centrum:78",
-        "centrum:558",
-        "centrum:560",
-        "centrum:559",
-        "centrum:17",
-        "centrum:465",
-        *(f"sms:Nova Sport {number}" for number in range(3, 7)),
-    ),
-    (
-        "centrum:4",
-        "centrum:92",
-        "centrum:474",
-        "centrum:608",
-        "centrum:226",
-        "centrum:333",
-        "centrum:818",
-    ),
-    ("centrum:89",),
-    ("centrum:5", "centrum:6"),
-    ("centrum:7",),
-    ("centrum:11", "centrum:12"),
-    ("centrum:16", "centrum:25"),
-    (
-        *(f"sms:Oneplay Sport {number}" for number in range(1, 5)),
-        *(f"sms:Oneplay Sport MD{number}" for number in range(1, 11)),
-    ),
-)
-_TELEVISION_STATION_ID_ORDER = {
-    station_id: (family_position, station_position)
-    for family_position, station_ids in enumerate(
-        _TELEVISION_FAMILY_STATION_IDS
-    )
-    for station_position, station_id in enumerate(station_ids)
-}
+_TELEVISION_FAMILY_COUNT = 9
 
 
 def _normalized_station_text(value: str) -> str:
@@ -175,7 +131,7 @@ def _television_station_family(name: str) -> int:
         return 7
     if "oneplay" in words or normalized.startswith("oneplay"):
         return 8
-    return len(_TELEVISION_FAMILY_STATION_IDS)
+    return _TELEVISION_FAMILY_COUNT
 
 
 def _television_station_sort_key(station: GuideStation) -> tuple[Any, ...]:
@@ -1125,23 +1081,22 @@ class GuideRepository:
             close()
 
     def refresh_stations(self, medium: GuideMedium) -> list[GuideStation]:
+        if medium is GuideMedium.TELEVISION:
+            return self.fallback_stations(medium)
+        if medium is not GuideMedium.RADIO:
+            raise ValueError(f"Unsupported medium: {medium}")
         try:
-            if medium is GuideMedium.TELEVISION:
-                live = parse_centrum_stations(
-                    self.data_source.get(CENTRUM_CHANNELS_URL, JSON_ACCEPT)
-                )
-            elif medium is GuideMedium.RADIO:
-                live = parse_rozhlas_stations(
-                    self.data_source.get(ROZHLAS_STATIONS_URL, JSON_ACCEPT)
-                )
-            else:
-                raise ValueError(f"Unsupported medium: {medium}")
+            live = parse_rozhlas_stations(
+                self.data_source.get(ROZHLAS_STATIONS_URL, JSON_ACCEPT)
+            )
         except GuideException:
             live = []
         if not live:
             return self.fallback_stations(medium)
-        merged = {station.id: station for station in live}
-        for station in self.fallback_stations(medium):
+        merged = {
+            station.id: station for station in self.fallback_stations(medium)
+        }
+        for station in live:
             merged.setdefault(station.id, station)
         return order_guide_stations(merged.values(), medium)
 
@@ -1162,10 +1117,13 @@ class GuideRepository:
             if not channel.isdigit():
                 raise ValueError(f"Invalid Centrum station id: {station.id}")
             ct_channel = CT_CHANNELS.get(channel)
+            sms_name = TELEVISION_SMS_NAMES.get(channel)
             return (
-                self._load_ct_then_centrum(ct_channel, channel, date)
+                self._load_ct_then_centrum(
+                    ct_channel, channel, sms_name, date
+                )
                 if ct_channel
-                else self._load_centrum(channel, date)
+                else self._load_centrum_then_sms(channel, sms_name, date)
             )
         if station.id.startswith("sms:"):
             sms_name = station.id.removeprefix("sms:").strip()
@@ -1199,14 +1157,19 @@ class GuideRepository:
             primary_failure = exception
         sms_name = RADIO_SMS_NAMES.get(station_id, station.name)
         try:
-            return self._load_sms(sms_name, date)
+            fallback = self._load_sms(sms_name, date)
+            if fallback or primary_failure is None:
+                return fallback
         except GuideException as fallback_failure:
             if primary_failure is not None:
                 raise fallback_failure from primary_failure
             raise
+        assert primary_failure is not None
+        raise primary_failure
 
     def _load_ct_then_centrum(
-        self, ct_channel: str, centrum_channel: str, date: GuideDate
+        self, ct_channel: str, centrum_channel: str,
+        sms_name: str | None, date: GuideDate
     ) -> list[GuideProgramEntry]:
         primary_failure: GuideException | None = None
         try:
@@ -1222,11 +1185,40 @@ class GuideRepository:
         except GuideException as exception:
             primary_failure = exception
         try:
-            return self._load_centrum(centrum_channel, date)
+            fallback = self._load_centrum_then_sms(
+                centrum_channel, sms_name, date
+            )
+            if fallback or primary_failure is None:
+                return fallback
         except GuideException as fallback_failure:
             if primary_failure is not None:
                 raise fallback_failure from primary_failure
             raise
+        assert primary_failure is not None
+        raise primary_failure
+
+    def _load_centrum_then_sms(
+        self, channel: str, sms_name: str | None, date: GuideDate
+    ) -> list[GuideProgramEntry]:
+        primary_failure: GuideException | None = None
+        try:
+            primary = self._load_centrum(channel, date)
+            if primary or sms_name is None:
+                return primary
+        except GuideException as exception:
+            if sms_name is None:
+                raise
+            primary_failure = exception
+        try:
+            fallback = self._load_sms(sms_name, date)
+            if fallback or primary_failure is None:
+                return fallback
+        except GuideException as fallback_failure:
+            if primary_failure is not None:
+                raise fallback_failure from primary_failure
+            raise
+        assert primary_failure is not None
+        raise primary_failure
 
     def _load_ct_web(self, channel: str, date: GuideDate) -> list[GuideProgramEntry]:
         url = f"{CT_WEB_SCHEDULE_BASE}/{date.ct()}/"
@@ -1311,8 +1303,10 @@ def _tv(station_id: str, name: str) -> GuideStation:
     return GuideStation(f"centrum:{station_id}", name, GuideMedium.TELEVISION)
 
 
-def _sms_tv(name: str) -> GuideStation:
-    return GuideStation(f"sms:{name}", name, GuideMedium.TELEVISION)
+def _sms_tv(name: str, display_name: str | None = None) -> GuideStation:
+    return GuideStation(
+        f"sms:{name}", display_name or name, GuideMedium.TELEVISION
+    )
 
 
 def _radio(station_id: str, name: str) -> GuideStation:
@@ -1340,31 +1334,182 @@ TELEVISION_FALLBACK: tuple[GuideStation, ...] = (
     _tv("357", "ČT :D"),
     _tv("358", "ČT art"),
     _tv("3", "Nova"),
-    _tv("4", "Prima"),
     _tv("78", "Nova Cinema"),
     _tv("558", "Nova Action"),
     _tv("560", "Nova Fun"),
-    _tv("559", "Nova Gold"),
+    _tv("559", "Nova Krimi"),
+    _sms_tv("Nova Lady"),
+    _tv("17", "Nova Sport 1"),
+    _tv("465", "Nova Sport 2"),
+    *tuple(_sms_tv(f"Nova Sport {number}") for number in range(3, 7)),
+    _tv("4", "Prima"),
     _tv("92", "Prima Cool"),
     _tv("474", "Prima MAX"),
     _tv("608", "Prima Krimi"),
     _tv("226", "Prima Love"),
+    _tv("556", "Prima PLUS"),
+    _sms_tv("Prima Show"),
+    _sms_tv("Prima sport", "Prima Sport"),
+    _sms_tv("Prima Star"),
     _tv("333", "Prima ZOOM"),
     _tv("818", "CNN Prima News"),
     _tv("89", "Barrandov"),
+    _sms_tv("Barrandov Krimi"),
+    _sms_tv("Barrandov Kino", "Kino Barrandov"),
     _tv("5", "HBO"),
     _tv("6", "HBO 2"),
+    _sms_tv("HBO3", "HBO 3"),
     _tv("7", "Cinemax"),
+    _tv("112", "Cinemax 2"),
     _tv("11", "Animal Planet"),
     _tv("12", "Discovery Channel"),
     _tv("16", "Eurosport"),
     _tv("25", "Eurosport 2"),
-    _tv("17", "Nova Sport 1"),
-    _tv("465", "Nova Sport 2"),
-    *tuple(_sms_tv(f"Nova Sport {number}") for number in range(3, 7)),
     *tuple(_sms_tv(f"Oneplay Sport {number}") for number in range(1, 5)),
-    *tuple(_sms_tv(f"Oneplay Sport MD{number}") for number in range(1, 11)),
+    _tv("181", "Jednotka"),
+    _tv("180", "Dvojka"),
+    _tv("183", "Markíza"),
+    _sms_tv("Markíza International"),
+    _tv("182", "TV Doma"),
+    _tv("185", "JOJ"),
+    _tv("184", "JOJ+"),
+    _sms_tv("JOJ Cinema"),
+    _sms_tv("JOJ Family"),
+    _sms_tv("Jojko"),
+    _tv("68", "TA3"),
+    _tv("394", "AMC"),
+    _tv("9", "AXN"),
+    _tv("369", "AXN Black"),
+    _tv("370", "AXN White"),
+    _tv("108", "Baby TV"),
+    _tv("97", "BBC World News"),
+    _tv("73", "Boomerang"),
+    _tv("110", "C Music TV"),
+    *tuple(
+        _sms_tv(
+            "Canal+ Sport" if number == 1 else f"Canal+ Sport {number}"
+        )
+        for number in range(1, 9)
+    ),
+    _tv("55", "Cartoon+TCM"),
+    _tv("152", "CNBC Europe"),
+    _tv("23", "CNN"),
+    _tv("15", "CS Film"),
+    _sms_tv("CS History"),
+    _sms_tv("CS Horror"),
+    _tv("31", "Disney Channel"),
+    _tv("117", "Euronews"),
+    _tv("85", "Extreme Sports"),
+    _tv("63", "Film+"),
+    _tv("64", "Filmbox"),
+    _tv("65", "Filmbox Stars"),
+    _sms_tv("France24", "France 24"),
+    _tv("125", "History Channel"),
+    _tv("72", "Hustler"),
+    _tv("77", "JimJam"),
+    _tv("127", "Leo TV"),
+    _tv("67", "Mezzo"),
+    _tv("20", "MTV"),
+    _tv("132", "Music Box"),
+    _tv("21", "National Geographic"),
+    _tv("82", "National Geographic Wild"),
+    _tv("19", "Óčko"),
+    _sms_tv("Seznam.cz TV", "Seznam TV"),
+    _tv("10", "Spektrum"),
+    _tv("30", "Spektrum Home"),
+    _tv("61", "Sport1"),
+    _tv("93", "Sport2"),
+    _sms_tv("TLC"),
+    _tv("105", "Travel Channel"),
+    _tv("75", "TV Noe"),
+    _tv("29", "TV Paprika"),
+    _tv("141", "TV5 Monde"),
+    _tv("13", "Viasat Explorer"),
+    _tv("14", "Viasat History"),
 )
+
+_TELEVISION_STATION_ID_ORDER = {
+    station.id: (
+        _television_station_family(station.name),
+        station_position,
+    )
+    for station_position, station in enumerate(TELEVISION_FALLBACK)
+}
+
+TELEVISION_SMS_NAMES = {
+    "1": "ČT1",
+    "2": "ČT2",
+    "3": "Nova",
+    "4": "Prima",
+    "5": "HBO",
+    "6": "HBO2",
+    "7": "Cinemax",
+    "9": "AXN",
+    "10": "Spektrum",
+    "11": "Animal Planet",
+    "13": "Viasat Explore",
+    "14": "Viasat History",
+    "15": "CS Film",
+    "16": "Eurosport 1",
+    "17": "Nova Sport 1",
+    "18": "ČT sport",
+    "19": "Óčko",
+    "20": "MTV",
+    "21": "National Geographic HD",
+    "23": "CNN International",
+    "24": "ČT24",
+    "25": "Eurosport 2",
+    "29": "Paprika",
+    "30": "Spektrum Home",
+    "31": "Disney Channel",
+    "61": "Sport1",
+    "63": "Film+",
+    "64": "Filmbox+ one",
+    "65": "Filmbox+ hits",
+    "67": "Mezzo",
+    "68": "TA3",
+    "72": "Hustler TV",
+    "75": "Noe",
+    "77": "Jim Jam",
+    "78": "Nova Cinema",
+    "82": "National Geographic Wild",
+    "85": "Extreme Sports",
+    "89": "Barrandov",
+    "92": "Prima Cool",
+    "93": "Sport2",
+    "97": "BBC World News",
+    "105": "Travel Channel",
+    "108": "Baby TV",
+    "110": "C Music TV",
+    "112": "Cinemax 2",
+    "117": "Euronews",
+    "125": "History Channel",
+    "127": "Leo",
+    "132": "Music Box",
+    "141": "TV5MONDE",
+    "152": "CNBC Europe",
+    "180": "Dvojka",
+    "181": "Jednotka",
+    "182": "Doma",
+    "183": "Markíza",
+    "184": "JOJ Plus",
+    "185": "JOJ",
+    "226": "Prima LOVE",
+    "333": "Prima ZOOM",
+    "357": "ČT :D",
+    "358": "ČT art",
+    "369": "AXN Black",
+    "370": "AXN White",
+    "394": "AMC",
+    "465": "Nova Sport 2",
+    "474": "Prima MAX",
+    "556": "Prima SK",
+    "558": "Nova Action",
+    "559": "Nova Krimi",
+    "560": "Nova Fun",
+    "608": "Prima Krimi",
+    "818": "CNN Prima News",
+}
 
 RADIO_FALLBACK: tuple[GuideStation, ...] = (
     _radio("radiozurnal", "Radiožurnál"),
@@ -1403,7 +1548,6 @@ RADIO_FALLBACK: tuple[GuideStation, ...] = (
             "SRO4 - Radio FM",
             "SRO5 - Patria",
             "SRO6 - Slovakia International",
-            "SRO7 - Klasika",
             "SRO8 - Litera",
             "BBC Czech",
             "BBC Radio",
@@ -1424,9 +1568,9 @@ RADIO_FALLBACK: tuple[GuideStation, ...] = (
             "Radio Proglas",
             "Europa 2",
             "Fun rádio",
-            "Jemne Melodie",
+            "Rádio Melody",
             "Lumen",
-            "Rádio Anténa Rock",
+            "Rádio ROCK",
             "Radio Expres",
             "Radio Junior (sk)",
             "Rádio Liptov",
@@ -1437,6 +1581,7 @@ RADIO_FALLBACK: tuple[GuideStation, ...] = (
         )
     ),
 )
+
 
 RADIO_SMS_NAMES = {
     "radiozurnal": "ČRo Radiožurnál",
@@ -1481,7 +1626,9 @@ __all__ = [
     "GuideStation",
     "GuideTime",
     "RADIO_FALLBACK",
+    "RADIO_SMS_NAMES",
     "TELEVISION_FALLBACK",
+    "TELEVISION_SMS_NAMES",
     "clean_html",
     "clean_text",
     "guide_date_at",

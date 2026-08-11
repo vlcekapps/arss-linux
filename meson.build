@@ -1,6 +1,6 @@
 project(
   'arss-linux',
-  version: '1.6.12',
+  version: '1.6.13',
   meson_version: '>=1.2.0',
 )
 

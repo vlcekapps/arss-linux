@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import re
 import unittest
+from urllib.parse import quote_plus
 
 from arss.guide import (
     GuideDate,
@@ -13,6 +15,8 @@ from arss.guide import (
     GuideRepository,
     GuideStation,
     GuideTime,
+    RADIO_SMS_NAMES,
+    TELEVISION_SMS_NAMES,
     order_guide_stations,
     parse_centrum_program,
     parse_centrum_stations,
@@ -33,6 +37,236 @@ def fixture(name: str) -> bytes:
 
 def instant(value: str) -> int:
     return int(datetime.fromisoformat(value).timestamp() * 1000)
+
+EXPECTED_TELEVISION_STATIONS = (
+    ('centrum:1', 'ČT1'),
+    ('centrum:2', 'ČT2'),
+    ('centrum:24', 'ČT24'),
+    ('centrum:18', 'ČT sport'),
+    ('centrum:357', 'ČT :D'),
+    ('centrum:358', 'ČT art'),
+    ('centrum:3', 'Nova'),
+    ('centrum:78', 'Nova Cinema'),
+    ('centrum:558', 'Nova Action'),
+    ('centrum:560', 'Nova Fun'),
+    ('centrum:559', 'Nova Krimi'),
+    ('sms:Nova Lady', 'Nova Lady'),
+    ('centrum:17', 'Nova Sport 1'),
+    ('centrum:465', 'Nova Sport 2'),
+    ('sms:Nova Sport 3', 'Nova Sport 3'),
+    ('sms:Nova Sport 4', 'Nova Sport 4'),
+    ('sms:Nova Sport 5', 'Nova Sport 5'),
+    ('sms:Nova Sport 6', 'Nova Sport 6'),
+    ('centrum:4', 'Prima'),
+    ('centrum:92', 'Prima Cool'),
+    ('centrum:474', 'Prima MAX'),
+    ('centrum:608', 'Prima Krimi'),
+    ('centrum:226', 'Prima Love'),
+    ('centrum:556', 'Prima PLUS'),
+    ('sms:Prima Show', 'Prima Show'),
+    ('sms:Prima sport', 'Prima Sport'),
+    ('sms:Prima Star', 'Prima Star'),
+    ('centrum:333', 'Prima ZOOM'),
+    ('centrum:818', 'CNN Prima News'),
+    ('centrum:89', 'Barrandov'),
+    ('sms:Barrandov Krimi', 'Barrandov Krimi'),
+    ('sms:Barrandov Kino', 'Kino Barrandov'),
+    ('centrum:5', 'HBO'),
+    ('centrum:6', 'HBO 2'),
+    ('sms:HBO3', 'HBO 3'),
+    ('centrum:7', 'Cinemax'),
+    ('centrum:112', 'Cinemax 2'),
+    ('centrum:11', 'Animal Planet'),
+    ('centrum:12', 'Discovery Channel'),
+    ('centrum:16', 'Eurosport'),
+    ('centrum:25', 'Eurosport 2'),
+    ('sms:Oneplay Sport 1', 'Oneplay Sport 1'),
+    ('sms:Oneplay Sport 2', 'Oneplay Sport 2'),
+    ('sms:Oneplay Sport 3', 'Oneplay Sport 3'),
+    ('sms:Oneplay Sport 4', 'Oneplay Sport 4'),
+    ('centrum:181', 'Jednotka'),
+    ('centrum:180', 'Dvojka'),
+    ('centrum:183', 'Markíza'),
+    ('sms:Markíza International', 'Markíza International'),
+    ('centrum:182', 'TV Doma'),
+    ('centrum:185', 'JOJ'),
+    ('centrum:184', 'JOJ+'),
+    ('sms:JOJ Cinema', 'JOJ Cinema'),
+    ('sms:JOJ Family', 'JOJ Family'),
+    ('sms:Jojko', 'Jojko'),
+    ('centrum:68', 'TA3'),
+    ('centrum:394', 'AMC'),
+    ('centrum:9', 'AXN'),
+    ('centrum:369', 'AXN Black'),
+    ('centrum:370', 'AXN White'),
+    ('centrum:108', 'Baby TV'),
+    ('centrum:97', 'BBC World News'),
+    ('centrum:73', 'Boomerang'),
+    ('centrum:110', 'C Music TV'),
+    ('sms:Canal+ Sport', 'Canal+ Sport'),
+    ('sms:Canal+ Sport 2', 'Canal+ Sport 2'),
+    ('sms:Canal+ Sport 3', 'Canal+ Sport 3'),
+    ('sms:Canal+ Sport 4', 'Canal+ Sport 4'),
+    ('sms:Canal+ Sport 5', 'Canal+ Sport 5'),
+    ('sms:Canal+ Sport 6', 'Canal+ Sport 6'),
+    ('sms:Canal+ Sport 7', 'Canal+ Sport 7'),
+    ('sms:Canal+ Sport 8', 'Canal+ Sport 8'),
+    ('centrum:55', 'Cartoon+TCM'),
+    ('centrum:152', 'CNBC Europe'),
+    ('centrum:23', 'CNN'),
+    ('centrum:15', 'CS Film'),
+    ('sms:CS History', 'CS History'),
+    ('sms:CS Horror', 'CS Horror'),
+    ('centrum:31', 'Disney Channel'),
+    ('centrum:117', 'Euronews'),
+    ('centrum:85', 'Extreme Sports'),
+    ('centrum:63', 'Film+'),
+    ('centrum:64', 'Filmbox'),
+    ('centrum:65', 'Filmbox Stars'),
+    ('sms:France24', 'France 24'),
+    ('centrum:125', 'History Channel'),
+    ('centrum:72', 'Hustler'),
+    ('centrum:77', 'JimJam'),
+    ('centrum:127', 'Leo TV'),
+    ('centrum:67', 'Mezzo'),
+    ('centrum:20', 'MTV'),
+    ('centrum:132', 'Music Box'),
+    ('centrum:21', 'National Geographic'),
+    ('centrum:82', 'National Geographic Wild'),
+    ('centrum:19', 'Óčko'),
+    ('sms:Seznam.cz TV', 'Seznam TV'),
+    ('centrum:10', 'Spektrum'),
+    ('centrum:30', 'Spektrum Home'),
+    ('centrum:61', 'Sport1'),
+    ('centrum:93', 'Sport2'),
+    ('sms:TLC', 'TLC'),
+    ('centrum:105', 'Travel Channel'),
+    ('centrum:75', 'TV Noe'),
+    ('centrum:29', 'TV Paprika'),
+    ('centrum:141', 'TV5 Monde'),
+    ('centrum:13', 'Viasat Explorer'),
+    ('centrum:14', 'Viasat History'),
+)
+
+EXPECTED_RADIO_STATIONS = (
+    ('rozhlas:radiozurnal', 'Radiožurnál'),
+    ('rozhlas:dvojka', 'Dvojka'),
+    ('rozhlas:vltava', 'Vltava'),
+    ('rozhlas:plus', 'Plus'),
+    ('rozhlas:radiozurnal-sport', 'Radiožurnál Sport'),
+    ('rozhlas:radiowave', 'Radio Wave'),
+    ('rozhlas:radiojunior', 'Rádio Junior'),
+    ('rozhlas:d-dur', 'D-dur'),
+    ('rozhlas:jazz', 'Jazz'),
+    ('rozhlas:pohoda', 'Český rozhlas Pohoda'),
+    ('rozhlas:cro7', 'Radio Prague International'),
+    ('rozhlas:brno', 'Brno'),
+    ('rozhlas:cb', 'České Budějovice'),
+    ('rozhlas:hradec', 'Hradec Králové'),
+    ('rozhlas:kv', 'Karlovy Vary'),
+    ('rozhlas:liberec', 'Liberec'),
+    ('rozhlas:olomouc', 'Olomouc'),
+    ('rozhlas:ostrava', 'Ostrava'),
+    ('rozhlas:pardubice', 'Pardubice'),
+    ('rozhlas:plzen', 'Plzeň'),
+    ('rozhlas:regina', 'Rádio Praha'),
+    ('rozhlas:strednicechy', 'Střední Čechy'),
+    ('rozhlas:sever', 'Sever'),
+    ('rozhlas:vysocina', 'Vysočina'),
+    ('rozhlas:zlin', 'Zlín'),
+    ('sms:SRO1 - Slovensko', 'SRO1 - Slovensko'),
+    ('sms:SRO2 - Regina Stred', 'SRO2 - Regina Stred'),
+    ('sms:SRO2 - Regina Východ', 'SRO2 - Regina Východ'),
+    ('sms:SRO2 - Regina Západ', 'SRO2 - Regina Západ'),
+    ('sms:SRO3 - Devín', 'SRO3 - Devín'),
+    ('sms:SRO4 - Radio FM', 'SRO4 - Radio FM'),
+    ('sms:SRO5 - Patria', 'SRO5 - Patria'),
+    ('sms:SRO6 - Slovakia International', 'SRO6 - Slovakia International'),
+    ('sms:SRO8 - Litera', 'SRO8 - Litera'),
+    ('sms:BBC Czech', 'BBC Czech'),
+    ('sms:BBC Radio', 'BBC Radio'),
+    ('sms:Classic FM', 'Classic FM'),
+    ('sms:Country Radio', 'Country Radio'),
+    ('sms:Dance Radio', 'Dance Radio'),
+    ('sms:Evropa 2', 'Evropa 2'),
+    ('sms:Fajn radio', 'Fajn radio'),
+    ('sms:Frekvence 1', 'Frekvence 1'),
+    ('sms:Impuls', 'Impuls'),
+    ('sms:Kiss 98', 'Kiss 98'),
+    ('sms:Kiss Morava', 'Kiss Morava'),
+    ('sms:Radio 1', 'Radio 1'),
+    ('sms:Radio7', 'Radio7'),
+    ('sms:Radio Beat', 'Radio Beat'),
+    ('sms:Rádio Blaník', 'Rádio Blaník'),
+    ('sms:Radio Čas', 'Radio Čas'),
+    ('sms:Radio Proglas', 'Radio Proglas'),
+    ('sms:Europa 2', 'Europa 2'),
+    ('sms:Fun rádio', 'Fun rádio'),
+    ('sms:Rádio Melody', 'Rádio Melody'),
+    ('sms:Lumen', 'Lumen'),
+    ('sms:Rádio ROCK', 'Rádio ROCK'),
+    ('sms:Radio Expres', 'Radio Expres'),
+    ('sms:Radio Junior (sk)', 'Radio Junior (sk)'),
+    ('sms:Rádio Liptov', 'Rádio Liptov'),
+    ('sms:Rádio SiTy', 'Rádio SiTy'),
+    ('sms:Rádio VIVA', 'Rádio VIVA'),
+    ('sms:Rádio Vlna', 'Rádio Vlna'),
+    ('sms:Radio WOW', 'Radio WOW'),
+)
+EXPECTED_TELEVISION_SMS_NAMES = {
+    station_id.removeprefix("centrum:"): name
+    for station_id, name in EXPECTED_TELEVISION_STATIONS
+    if station_id.startswith("centrum:")
+    and station_id.removeprefix("centrum:") not in {"12", "55", "73"}
+} | {
+    "6": "HBO2",
+    "13": "Viasat Explore",
+    "16": "Eurosport 1",
+    "21": "National Geographic HD",
+    "23": "CNN International",
+    "29": "Paprika",
+    "64": "Filmbox+ one",
+    "65": "Filmbox+ hits",
+    "72": "Hustler TV",
+    "75": "Noe",
+    "77": "Jim Jam",
+    "127": "Leo",
+    "141": "TV5MONDE",
+    "182": "Doma",
+    "184": "JOJ Plus",
+    "226": "Prima LOVE",
+    "556": "Prima SK",
+}
+
+EXPECTED_RADIO_SMS_NAMES = {
+    "radiozurnal": "ČRo Radiožurnál",
+    "dvojka": "ČRo Dvojka",
+    "vltava": "ČRo Vltava",
+    "plus": "ČRo Plus",
+    "radiozurnal-sport": "Radiožurnál Sport",
+    "radiowave": "ČRo Radio Wave",
+    "radiojunior": "ČRo Rádio Junior",
+    "d-dur": "ČRo D-dur",
+    "jazz": "ČRo Jazz",
+    "pohoda": "ČRo Pohoda",
+    "cro7": "ČRo Radio Praha",
+    "brno": "ČRo Brno",
+    "cb": "ČRo České Budějovice",
+    "hradec": "ČRo Hradec Králové",
+    "kv": "ČRo Karlovy Vary",
+    "liberec": "ČRo Liberec",
+    "olomouc": "ČRo Olomouc",
+    "ostrava": "ČRo Ostrava",
+    "pardubice": "ČRo Pardubice",
+    "plzen": "ČRo Plzeň",
+    "regina": "ČRo Regina DAB Praha",
+    "strednicechy": "ČRo Region",
+    "sever": "ČRo Sever",
+    "vysocina": "ČRo Vysočina",
+    "zlin": "ČRo Zlín",
+}
+
+
 
 
 class GuideParserTests(unittest.TestCase):
@@ -137,63 +371,197 @@ class GuideRepositoryTests(unittest.TestCase):
         GuideRepository.clear_process_cache_for_tests()
 
     def test_stable_catalog_and_live_merge(self) -> None:
-        repository = GuideRepository(_FakeSource(lambda _url, _accept: b""))
+        def unexpected(_url: str, _accept: str) -> bytes:
+            raise AssertionError("The curated television catalog must be local.")
+
+        source = _FakeSource(unexpected)
+        repository = GuideRepository(source)
         television = repository.fallback_stations(GuideMedium.TELEVISION)
         radio = repository.fallback_stations(GuideMedium.RADIO)
-        expected_ids = [
-            "centrum:1",
-            "centrum:2",
-            "centrum:24",
-            "centrum:18",
-            "centrum:357",
-            "centrum:358",
-            "centrum:3",
-            "centrum:78",
-            "centrum:558",
-            "centrum:560",
-            "centrum:559",
-            "centrum:17",
-            "centrum:465",
-            *(f"sms:Nova Sport {number}" for number in range(3, 7)),
-            "centrum:4",
-            "centrum:92",
-            "centrum:474",
-            "centrum:608",
-            "centrum:226",
-            "centrum:333",
-            "centrum:818",
-            "centrum:89",
-            "centrum:5",
-            "centrum:6",
-            "centrum:7",
-            "centrum:11",
-            "centrum:12",
-            "centrum:16",
-            "centrum:25",
-            *(f"sms:Oneplay Sport {number}" for number in range(1, 5)),
-            *(f"sms:Oneplay Sport MD{number}" for number in range(1, 11)),
-        ]
-        self.assertEqual(expected_ids, [station.id for station in television])
         self.assertEqual(
-            [
-                (f"sms:Nova Sport {number}", f"Nova Sport {number}")
-                for number in range(3, 7)
-            ],
-            [
-                (station.id, station.name)
-                for station in television
-                if station.id.startswith("sms:Nova Sport ")
-            ],
+            list(EXPECTED_TELEVISION_STATIONS),
+            [(station.id, station.name) for station in television],
         )
-        self.assertTrue(
-            any(station.id == "rozhlas:radiozurnal" for station in radio)
+        self.assertEqual(
+            list(EXPECTED_RADIO_STATIONS),
+            [(station.id, station.name) for station in radio],
         )
-        self.assertTrue(any(station.id == "sms:Frekvence 1" for station in radio))
 
-        merged = GuideRepository(
-            _FakeSource(lambda _url, _accept: fixture("centrum_channels.json"))
-        ).refresh_stations(GuideMedium.TELEVISION)
-        self.assertEqual(expected_ids, [station.id for station in merged])
+        refreshed_tv = repository.refresh_stations(GuideMedium.TELEVISION)
+        self.assertEqual(
+            list(EXPECTED_TELEVISION_STATIONS),
+            [(station.id, station.name) for station in refreshed_tv],
+        )
+        self.assertEqual([], source.urls)
+
+        radio_source = _FakeSource(
+            lambda _url, _accept: fixture("rozhlas_stations.json")
+        )
+        refreshed_radio = GuideRepository(radio_source).refresh_stations(
+            GuideMedium.RADIO
+        )
+        self.assertEqual(
+            list(EXPECTED_RADIO_STATIONS),
+            [(station.id, station.name) for station in refreshed_radio],
+        )
+
+    def test_catalog_ids_and_provider_keys_are_safe(self) -> None:
+        television = GuideRepository().fallback_stations(
+            GuideMedium.TELEVISION
+        )
+        radio = GuideRepository().fallback_stations(GuideMedium.RADIO)
+        self.assertEqual(
+            EXPECTED_TELEVISION_SMS_NAMES, TELEVISION_SMS_NAMES
+        )
+        self.assertEqual(EXPECTED_RADIO_SMS_NAMES, RADIO_SMS_NAMES)
+        self.assertEqual(107, len(television))
+        self.assertEqual(63, len(radio))
+        for stations in (television, radio):
+            ids = [station.id for station in stations]
+            names = [station.name for station in stations]
+            self.assertEqual(len(ids), len(set(ids)))
+            self.assertEqual(len(names), len(set(names)))
+            self.assertTrue(all(name == name.strip() for name in names))
+
+        television_centrum_ids: set[str] = set()
+        for station in television:
+            if station.id.startswith("centrum:"):
+                provider_id = station.id.removeprefix("centrum:")
+                self.assertRegex(provider_id, r"^[0-9]+$")
+                television_centrum_ids.add(provider_id)
+            else:
+                self.assertTrue(station.id.startswith("sms:"))
+                self.assertTrue(station.id.removeprefix("sms:").strip())
+        self.assertLessEqual(
+            set(TELEVISION_SMS_NAMES), television_centrum_ids
+        )
+
+        official_radio_ids: set[str] = set()
+        for station in radio:
+            if station.id.startswith("rozhlas:"):
+                provider_id = station.id.removeprefix("rozhlas:")
+                self.assertIsNotNone(re.fullmatch(r"[a-z0-9-]+", provider_id))
+                official_radio_ids.add(provider_id)
+            else:
+                self.assertTrue(station.id.startswith("sms:"))
+                self.assertTrue(station.id.removeprefix("sms:").strip())
+        self.assertEqual(set(RADIO_SMS_NAMES), official_radio_ids)
+
+        sms_names = [
+            station.id.removeprefix("sms:")
+            for station in (*television, *radio)
+            if station.id.startswith("sms:")
+        ]
+        sms_names.extend(TELEVISION_SMS_NAMES.values())
+        sms_names.extend(RADIO_SMS_NAMES.values())
+        for sms_name in sms_names:
+            sms_name.encode("cp1250", errors="strict")
+            self.assertTrue(quote_plus(sms_name, encoding="cp1250"))
+
+    def test_every_television_sms_fallback_uses_exact_provider_key(self) -> None:
+        guide_date = GuideDate(2026, 7, 22)
+        television_names = {
+            station_id.removeprefix("centrum:"): name
+            for station_id, name in EXPECTED_TELEVISION_STATIONS
+            if station_id.startswith("centrum:")
+        }
+
+        for channel, sms_name in EXPECTED_TELEVISION_SMS_NAMES.items():
+            with self.subTest(channel=channel, sms_name=sms_name):
+                GuideRepository.clear_process_cache_for_tests()
+
+                def response(url: str, _accept: str) -> bytes:
+                    if "/tv-program/" in url or "/services-old/" in url:
+                        raise GuideNetworkException("offline")
+                    if "api/broadcasting" in url:
+                        return f'{{"{channel}":[]}}'.encode("ascii")
+                    if "m.tv.sms.cz" in url:
+                        return fixture("sms_program.html")
+                    raise AssertionError(url)
+
+                source = _FakeSource(response)
+                entries = GuideRepository(source).load_program(
+                    GuideStation(
+                        f"centrum:{channel}",
+                        television_names[channel],
+                        GuideMedium.TELEVISION,
+                    ),
+                    guide_date,
+                )
+                expected_centrum_url = (
+                    "https://tvprogram.centrum.cz/api/broadcasting/"
+                    f"2026-07-22?channels%5B%5D={channel}"
+                )
+                expected_sms_url = (
+                    "https://m.tv.sms.cz/?cas=0&den=2026-07-22"
+                    f"&stanice={quote_plus(sms_name, encoding='cp1250')}"
+                )
+                self.assertEqual(2, len(entries))
+                self.assertIn(expected_centrum_url, source.urls)
+                self.assertEqual(expected_sms_url, source.urls[-1])
+
+    def test_every_direct_sms_station_routes_its_persisted_key(self) -> None:
+        guide_date = GuideDate(2026, 7, 22)
+        catalogs = (
+            (GuideMedium.TELEVISION, EXPECTED_TELEVISION_STATIONS),
+            (GuideMedium.RADIO, EXPECTED_RADIO_STATIONS),
+        )
+        for medium, catalog in catalogs:
+            for station_id, name in catalog:
+                if not station_id.startswith("sms:"):
+                    continue
+                provider_key = station_id.removeprefix("sms:")
+                with self.subTest(medium=medium, provider_key=provider_key):
+                    source = _FakeSource(
+                        lambda url, _accept: fixture("sms_program.html")
+                        if "m.tv.sms.cz" in url
+                        else (_ for _ in ()).throw(AssertionError(url))
+                    )
+                    entries = GuideRepository(source).load_program(
+                        GuideStation(station_id, name, medium),
+                        guide_date,
+                    )
+                    expected_url = (
+                        "https://m.tv.sms.cz/?cas=0&den=2026-07-22"
+                        f"&stanice={quote_plus(provider_key, encoding='cp1250')}"
+                    )
+                    self.assertEqual(2, len(entries))
+                    self.assertEqual([expected_url], source.urls)
+
+    def test_every_official_radio_station_uses_exact_sms_fallback(self) -> None:
+        guide_date = GuideDate(2026, 7, 22)
+        radio_names = {
+            station_id.removeprefix("rozhlas:"): name
+            for station_id, name in EXPECTED_RADIO_STATIONS
+            if station_id.startswith("rozhlas:")
+        }
+        for station_id, sms_name in EXPECTED_RADIO_SMS_NAMES.items():
+            with self.subTest(station_id=station_id, sms_name=sms_name):
+                def response(url: str, _accept: str) -> bytes:
+                    if "api.rozhlas.cz" in url:
+                        raise GuideNetworkException("offline")
+                    if "m.tv.sms.cz" in url:
+                        return fixture("sms_program.html")
+                    raise AssertionError(url)
+
+                source = _FakeSource(response)
+                entries = GuideRepository(source).load_program(
+                    GuideStation(
+                        f"rozhlas:{station_id}",
+                        radio_names[station_id],
+                        GuideMedium.RADIO,
+                    ),
+                    guide_date,
+                )
+                expected_urls = [
+                    "https://api.rozhlas.cz/data/v2/schedule/day/"
+                    f"2026/07/22/{station_id}.json",
+                    "https://m.tv.sms.cz/?cas=0&den=2026-07-22"
+                    f"&stanice={quote_plus(sms_name, encoding='cp1250')}",
+                ]
+                self.assertEqual(2, len(entries))
+                self.assertEqual(expected_urls, source.urls)
+
 
     def test_television_sort_keeps_station_names_attached_to_ids(self) -> None:
         ct = GuideStation("centrum:1", "Živé ČT1", GuideMedium.TELEVISION)
@@ -355,6 +723,36 @@ class GuideRepositoryTests(unittest.TestCase):
         )
         self.assertEqual(2, len(radio_entries))
         self.assertIn("stanice=%C8Ro+Radio%9Eurn%E1l", radio_source.urls[1])
+
+    def test_empty_secondary_source_preserves_primary_failure(self) -> None:
+        guide_date = GuideDate(2026, 7, 22)
+        stations = (
+            GuideStation(
+                "centrum:3",
+                "Nova",
+                GuideMedium.TELEVISION,
+            ),
+            GuideStation(
+                "rozhlas:radiozurnal",
+                "Radiožurnál",
+                GuideMedium.RADIO,
+            ),
+        )
+        for station in stations:
+            with self.subTest(station=station.id):
+                def response(url: str, _accept: str) -> bytes:
+                    if "m.tv.sms.cz" in url:
+                        return b"<html><body></body></html>"
+                    raise GuideNetworkException("primary offline")
+
+                source = _FakeSource(response)
+                with self.assertRaisesRegex(
+                    GuideNetworkException,
+                    "primary offline",
+                ):
+                    GuideRepository(source).load_program(station, guide_date)
+                self.assertEqual(2, len(source.urls))
+                self.assertIn("m.tv.sms.cz", source.urls[-1])
 
     def test_unsupported_provider_is_rejected_before_network(self) -> None:
         source = _FakeSource(lambda _url, _accept: b"")

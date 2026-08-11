@@ -120,12 +120,12 @@ Fedora release lze pro další sestavení stejné verze zvýšit například
 příkazem:
 
 ```bash
-ARSS_RPM_RELEASE=3 ./tools/build-rpm.sh
+ARSS_RPM_RELEASE=2 ./tools/build-rpm.sh
 ```
 
 Jiné umístění výsledků lze zvolit pomocí `ARSS_RPM_OUTPUT`. Pro opakovatelný
 obsah zdrojového archivu je výchozí `SOURCE_DATE_EPOCH` pevně svázán s
-vydáním 1.6.12; při nové verzi je nutné aktualizovat jej spolu s datem
+vydáním 1.6.13; při nové verzi je nutné aktualizovat jej spolu s datem
 vydání. Samotné RPM kontejnery nemusejí mít mezi dvěma buildy shodný SHA-256,
 protože RPM 6 ukládá do SRPM expandovanou dočasnou cestu; normalizovaný
 zdrojový archiv a instalovaný payload jsou však shodné.

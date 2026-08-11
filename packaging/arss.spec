@@ -1,7 +1,7 @@
-%{!?arss_release:%global arss_release 2}
+%{!?arss_release:%global arss_release 1}
 
 Name:           arss
-Version:        1.6.12
+Version:        1.6.13
 Release:        %{arss_release}%{?dist}
 Summary:        Accessible GTK 4 feed, podcast, and programme reader
 
@@ -72,6 +72,11 @@ systemd-analyze verify redhat-linux-build/arss-monitor@.service data/arss-monito
 %doc %{_datadir}/doc/arss-linux/desktop-integration.md
 
 %changelog
+* Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.13-1
+- Refresh the full television and radio station catalogs
+- Remove obsolete entries and preserve display-name/provider-ID pairings
+- Add television provider fallback routing and exact catalog regression tests
+
 * Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.12-2
 - Keep LICENSE canonical so repository hosts detect GNU GPL version 3
 - Retain the GPL-3.0-or-later choice in project and package metadata

@@ -22,8 +22,8 @@ GNOME vlastní standardní rozhraní.
 | Seznam článků a externí webový prohlížeč | Jeden fokusovatelný ovládací prvek na článek; žádný WebView | Hotovo |
 | Seznam epizod a interní přehrávač | Play/Pause, −15 s, +30 s, posuv při známé délce, hlasitost 0–100 % a rychlosti 0,5× až 2× | Hotovo |
 | Pozastavení přehrávání po opuštění přehrávače/aplikace | Desktopová verze při ztrátě aktivity pokračuje; končí zavřením přehrávače/aplikace a reaguje jen na skutečné audio přerušení | Záměrná desktopová odchylka |
-| TV a rozhlas podle média, stanice a data | Stejné katalogy, zdroje, fallbacky a časová zóna Praha; TV stanice jsou souvisle seřazené podle vysílatele a nativně prohledávatelné | Hotovo |
-| Nova Sport 1–6, Oneplay Sport, ČRo, SRO, komerční rádia | Stejné stabilní katalogy a zdrojové identifikátory | Hotovo |
+| TV a rozhlas podle média, stanice a data | Aktuální desktopové katalogy, veřejné fallbacky a časová zóna Praha; TV stanice jsou souvisle seřazené podle vysílatele a nativně prohledávatelné | Hotovo |
+| Nova Sport 1–6, Oneplay Sport, ČRo, SRO a komerční rádia | Stabilní zobrazované názvy a přesné identifikátory poskytovatelů; zastaralé identifikátory se nahrazují jejich aktuálními protějšky | Záměrná desktopová aktualizace |
 | Detail pořadu, právě vysílá, odkazy a zvukový popis `AD`/`AD?` | Stejná významová pravidla, včetně neznámého stavu fallbacku | Hotovo |
 | Volitelné datum článků a epizod | Samostatné přepínače v Nastavení | Hotovo |
 | Čeština, angličtina a jazyk systému | Volba se projeví okamžitě vytvořením nového hlavního okna | Hotovo |
