@@ -164,6 +164,28 @@ class SubscriptionStoreTest(unittest.TestCase):
         self.assertEqual(ENGLISH_INITIAL_FEEDS, initial_rss_feeds("system", "en_US"))
         self.assertEqual(ENGLISH_INITIAL_FEEDS, initial_rss_feeds("en", "cs_CZ"))
 
+    def test_initial_feed_urls_match_the_android_contract(self) -> None:
+        self.assertEqual(
+            (
+                "https://servis.idnes.cz/rss.aspx?c=zpravodaj",
+                "https://tn.nova.cz/feed/atom/tnnova-2",
+                "https://api-web.novinky.cz/v1/timelines/62baab43a1bac57b7436dc07?xml=rss",
+                "https://www.irozhlas.cz/rss/irozhlas",
+                "https://www.ceskenoviny.cz/sluzby/rss/zpravy.php",
+            ),
+            tuple(feed.url for feed in CZECH_INITIAL_FEEDS),
+        )
+        self.assertEqual(
+            (
+                "https://www.gutenberg.org/cache/epub/feeds/today.rss",
+                "https://feeds.bbci.co.uk/news/world/rss.xml",
+                "https://www.theguardian.com/world/rss",
+                "https://www.sciencedaily.com/rss/all.xml",
+                "https://www.theverge.com/rss/index.xml",
+            ),
+            tuple(feed.url for feed in ENGLISH_INITIAL_FEEDS),
+        )
+
     def test_deleted_or_missing_initialized_store_is_never_reseeded(self) -> None:
         store = FeedStore(
             paths=self.paths,

@@ -1,6 +1,6 @@
 project(
   'arss-linux',
-  version: '1.6.12',
+  version: '1.6.14',
   meson_version: '>=1.2.0',
 )
 
@@ -83,6 +83,7 @@ python.install_sources(
     'arss/playback.py',
     'arss/storage.py',
     'arss/ui.py',
+    'arss/user_errors.py',
   ],
   subdir: 'arss',
 )

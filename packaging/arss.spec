@@ -1,7 +1,7 @@
 %{!?arss_release:%global arss_release 2}
 
 Name:           arss
-Version:        1.6.12
+Version:        1.6.14
 Release:        %{arss_release}%{?dist}
 Summary:        Accessible GTK 4 feed, podcast, and programme reader
 
@@ -72,6 +72,22 @@ systemd-analyze verify redhat-linux-build/arss-monitor@.service data/arss-monito
 %doc %{_datadir}/doc/arss-linux/desktop-integration.md
 
 %changelog
+* Wed Aug 12 2026 Pavel Vlček <pavel@example.invalid> - 1.6.14-2
+- Rebuild the package for Fedora 45 and the Python 3.15 ABI
+- Verify the current GTK, libadwaita and GStreamer prerelease stack
+- Isolate the X11 AT-SPI harness from a Fedora 45 nightly IBus recursion
+
+* Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.14-1
+- Complete the audited Android feature parity across OPML, playback and guide state
+- Restore Oneplay Sport MD1 through MD10 and correct podcast notification context
+- Fully localize recoverable errors and every background-check interval label
+- Extend accessible pointer targets to all interactive GTK control families
+
+* Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.13-1
+- Refresh the full television and radio station catalogs
+- Remove obsolete entries and preserve display-name/provider-ID pairings
+- Add television provider fallback routing and exact catalog regression tests
+
 * Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.12-2
 - Keep LICENSE canonical so repository hosts detect GNU GPL version 3
 - Retain the GPL-3.0-or-later choice in project and package metadata

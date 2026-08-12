@@ -1,6 +1,10 @@
 button,
 entry,
-dropdown {
+dropdown,
+checkbutton,
+switch,
+scale,
+row {
   min-height: 48px;
 }
 

@@ -59,7 +59,17 @@ from .gtk_helpers import (
 from .i18n import Translator
 from .mpris import MprisService
 from .models import FeedArticle, FeedSubscription, ParsedFeed
-from .opml import merge_subscriptions, read_opml, write_opml
+from .opml import (
+    accept_podcast_import,
+    merge_subscriptions,
+    read_opml,
+    write_opml,
+)
+from .user_errors import (
+    directory_error_message,
+    feed_error_message,
+    opml_error_message,
+)
 
 
 T = TypeVar("T")
@@ -253,8 +263,8 @@ def open_uri(parent: Gtk.Window, uri: str, translator: Translator) -> None:
         return
     try:
         Gio.AppInfo.launch_default_for_uri(uri, None)
-    except GLib.Error as error:
-        alert(parent, translator("error"), str(error))
+    except GLib.Error:
+        alert(parent, translator("error"), translator("open_link_error"))
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -623,9 +633,7 @@ class SubscriptionPage(Gtk.Box):
         clear_list(self.list_box)
         if self.store_error is not None:
             self.list_scroll.set_visible(False)
-            self.empty.set_status(
-                self.window.t("store_unavailable", detail=str(self.store_error))
-            )
+            self.empty.set_status(self.window.t("store_unavailable"))
             return
         visible = self._visible_items()
         default_url = self.window.state.get("default_feed_url") if self.kind == "rss" else None
@@ -775,7 +783,7 @@ class SubscriptionPage(Gtk.Box):
             alert(
                 self.window,
                 self.window.t("error"),
-                self.window.t("store_unavailable", detail=str(self.store_error)),
+                self.window.t("store_unavailable"),
             )
             return False
         if any(item.url == subscription.url for item in self.items):
@@ -824,13 +832,9 @@ class SubscriptionPage(Gtk.Box):
                         parsed = self.window.services.fetch_feed(candidate.url)
                     except Exception:
                         continue
-                    if any(article.media_url for article in parsed.articles):
-                        playable.append(
-                            FeedSubscription(
-                                parsed.title.strip() or candidate.title,
-                                candidate.url,
-                            )
-                        )
+                    accepted = accept_podcast_import(candidate, parsed)
+                    if accepted is not None:
+                        playable.append(accepted)
                 return OpmlImportResult(
                     tuple(playable),
                     skipped_podcasts=len(candidates) - len(playable),
@@ -865,7 +869,15 @@ class SubscriptionPage(Gtk.Box):
                     )
                 )
 
-            self.window.run_async(work, loaded, lambda error: alert(self.window, self.window.t("error"), str(error)))
+            def failed(error: BaseException) -> None:
+                detail = opml_error_message(self.window.t, error)
+                alert(
+                    self.window,
+                    self.window.t("error"),
+                    self.window.t("opml_import_error", detail=detail),
+                )
+
+            self.window.run_async(work, loaded, failed)
 
         dialog.open(self.window, None, chosen)
 
@@ -878,12 +890,33 @@ class SubscriptionPage(Gtk.Box):
                 file = source.save_finish(result)
             except GLib.Error:
                 return
-            payload = write_opml(self.items)
+            try:
+                payload = write_opml(self.items)
+            except Exception as error:
+                detail = opml_error_message(self.window.t, error)
+                alert(
+                    self.window,
+                    self.window.t("error"),
+                    self.window.t("opml_export_error", detail=detail),
+                )
+                return
 
             def work() -> None:
                 file.replace_contents(payload, None, False, Gio.FileCreateFlags.REPLACE_DESTINATION, None)
 
-            self.window.run_async(work, lambda _value: self.window.toast(self.window.t("opml_exported")), lambda error: alert(self.window, self.window.t("error"), str(error)))
+            def failed(error: BaseException) -> None:
+                detail = opml_error_message(self.window.t, error)
+                alert(
+                    self.window,
+                    self.window.t("error"),
+                    self.window.t("opml_export_error", detail=detail),
+                )
+
+            self.window.run_async(
+                work,
+                lambda _value: self.window.toast(self.window.t("opml_exported")),
+                failed,
+            )
 
         dialog.save(self.window, None, chosen)
 
@@ -939,7 +972,9 @@ class AddSubscriptionWindow(FormWindow):
             self.entry.set_sensitive(True)
             button.set_sensitive(True)
             self.busy.stop()
-            self.status.set_status(self.parent_window.t("load_error", detail=str(error)))
+            self.status.set_status(
+                feed_error_message(self.parent_window.t, error)
+            )
 
         self.parent_window.run_async(lambda: self.parent_window.services.fetch_feed(url), loaded, failed)
 
@@ -1044,7 +1079,9 @@ class ItemsWindow(FormWindow):
 
     def _failed(self, error: BaseException) -> None:
         self.busy.stop()
-        self.status.set_status(self.parent_window.t("load_error", detail=str(error)))
+        self.status.set_status(
+            feed_error_message(self.parent_window.t, error)
+        )
         retry = wrapping_button(self.parent_window.t("retry"))
         retry.connect("clicked", lambda _button: (retry.set_visible(False), self.load()))
         self.content.append(retry)
@@ -1186,7 +1223,10 @@ class DirectoryWindow(FormWindow):
             if request != self._search_request:
                 return
             self._set_busy(False)
-            self.status.set_status(str(error))
+            detail = directory_error_message(self.parent_window.t, error)
+            self.status.set_status(
+                self.parent_window.t("directory_error", detail=detail)
+            )
             focus_exact_later(self.query)
 
         def work() -> list[Any]:
@@ -1257,7 +1297,9 @@ class DirectoryWindow(FormWindow):
 
         def failed(error: BaseException) -> None:
             self._set_busy(False)
-            self.status.set_status(self.parent_window.t("load_error", detail=str(error)))
+            self.status.set_status(
+                feed_error_message(self.parent_window.t, error)
+            )
             focus_list_item_later(self.results, position)
 
         self.parent_window.run_async(lambda: self.parent_window.services.fetch_feed(entry.url), loaded, failed)
@@ -1362,8 +1404,8 @@ class PlayerWindow(FormWindow):
         media_url = episode.media_url or ""
         try:
             self.player.open(media_url)
-        except Exception as error:
-            self.status.set_status(parent.t("load_error", detail=str(error)))
+        except Exception:
+            self.status.set_status(parent.t("playback_error"))
 
     def _toggle(self, _button: Gtk.Button) -> None:
         self.player.toggle()
@@ -1435,15 +1477,12 @@ class PlayerWindow(FormWindow):
             "completed": "completed",
             "error": "playback_error",
         }.get(phase, "ready")
-        error_message = str(getattr(state, "error_message", "") or "").strip()
-        if phase == "error" and error_message:
-            status_text = self.parent_window.t(
-                "playback_error_detail", detail=error_message
-            )
+        if bool(getattr(state, "audio_session_denied", False)):
+            status_text = self.parent_window.t("audio_session_denied")
+        elif phase == "error":
+            status_text = self.parent_window.t("playback_error")
         elif bool(getattr(state, "speed_change_failed", False)):
-            status_text = self.parent_window.t(
-                "speed_change_error", detail=error_message
-            )
+            status_text = self.parent_window.t("speed_change_error")
         else:
             status_text = self.parent_window.t(status_key)
         self.status.set_status(status_text)
@@ -1451,9 +1490,9 @@ class PlayerWindow(FormWindow):
         self.play.set_label(self.parent_window.t("pause" if playing else "play"))
         interactive, timeline_seekable = playback_control_sensitivity(state)
         self.scale.set_sensitive(timeline_seekable)
-        self.seek_back.set_sensitive(timeline_seekable)
+        self.seek_back.set_sensitive(interactive)
         self.play.set_sensitive(interactive)
-        self.seek_forward.set_sensitive(timeline_seekable)
+        self.seek_forward.set_sensitive(interactive)
         self.volume.set_sensitive(phase not in {"idle", "error"})
         self.speed.set_sensitive(interactive)
         self._sync_volume(float(getattr(state, "volume", 1.0)))
@@ -1481,6 +1520,7 @@ class GuidePage(Gtk.ScrolledWindow):
         self.set_focusable(False)
         self.window = window
         self.stations: list[Any] = []
+        self._station_updating = False
         self._station_request = 0
         self.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -1505,6 +1545,7 @@ class GuidePage(Gtk.ScrolledWindow):
         self.station = Gtk.DropDown.new(None, station_expression)
         self.station.set_enable_search(True)
         self.station.set_search_match_mode(Gtk.StringFilterMatchMode.PREFIX)
+        self.station.connect("notify::selected", self._station_changed)
         station_search_hint = window.t("station_search_hint")
         self.station.set_tooltip_text(station_search_hint)
         self.station.update_property(
@@ -1569,6 +1610,7 @@ class GuidePage(Gtk.ScrolledWindow):
                 stations,
                 GuideMedium(medium),
             )
+            self._station_updating = True
             self.stations = ordered_stations
             self.station.set_model(
                 Gtk.StringList.new(
@@ -1592,24 +1634,43 @@ class GuidePage(Gtk.ScrolledWindow):
             self.station.set_selected(
                 index if ordered_stations else Gtk.INVALID_LIST_POSITION
             )
+            self._station_updating = False
             self.station.set_sensitive(True)
             self.show.set_sensitive(True)
 
-        def failed(error: BaseException) -> None:
+        def failed(_error: BaseException) -> None:
             if request != self._station_request or medium != self._medium_value():
                 return
             self.busy.stop()
+            self._station_updating = True
             self.stations = []
             self.station.set_model(Gtk.StringList.new([]))
+            self._station_updating = False
             self.station.set_sensitive(True)
             self.show.set_sensitive(True)
-            self.status.set_status(str(error))
+            self.status.set_status(self.window.t("guide_catalog_error"))
 
         self.window.run_async(
             lambda: list(self.window.services.guide_stations(medium)),
             loaded,
             failed,
         )
+
+    def _station_changed(self, dropdown: Gtk.DropDown, *_args: object) -> None:
+        if self._station_updating:
+            return
+        index = dropdown.get_selected()
+        if index >= len(self.stations):
+            return
+        station_id = str(getattr(self.stations[index], "id", "")).strip()
+        if not station_id:
+            return
+        key = (
+            "guide_radio_station_id"
+            if self._medium_value() == "radio"
+            else "guide_television_station_id"
+        )
+        self.window.state.set(key, station_id)
 
     def _show(self, _button: Gtk.Button) -> None:
         try:
@@ -1630,9 +1691,6 @@ class GuidePage(Gtk.ScrolledWindow):
         set_invalid(self.station, False)
         self.status.set_status("", announce=False)
         selected_station = self.stations[index]
-        medium = self._medium_value()
-        key = "guide_radio_station_id" if medium == "radio" else "guide_television_station_id"
-        self.window.state.set(key, selected_station.id)
         ProgramWindow(self.window, selected_station, selected_date).present()
 
 
@@ -1954,6 +2012,19 @@ class ProgramDetailWindow(FormWindow):
 
 class SettingsPage(Gtk.ScrolledWindow):
     INTERVALS = (0, 1, 5, 10, 15, 30, 45, 60, 180, 360, 720)
+    INTERVAL_MESSAGE_KEYS = {
+        0: "manual",
+        1: "every_minute",
+        5: "every_5_minutes",
+        10: "every_10_minutes",
+        15: "every_15_minutes",
+        30: "every_30_minutes",
+        45: "every_45_minutes",
+        60: "every_hour",
+        180: "every_3_hours",
+        360: "every_6_hours",
+        720: "every_12_hours",
+    }
 
     def __init__(self, window: MainWindow) -> None:
         super().__init__()
@@ -2053,9 +2124,13 @@ class SettingsPage(Gtk.ScrolledWindow):
                 self.window.state,
                 self.window.services,
             )
-        except Exception as error:
+        except Exception:
             self.window.state.set("language", previous)
-            alert(self.window, self.window.t("error"), str(error))
+            alert(
+                self.window,
+                self.window.t("error"),
+                self.window.t("language_change_error"),
+            )
             return
         replacement.set_default_size(width, height)
         icon_name = self.window.get_icon_name()
@@ -2113,17 +2188,14 @@ class SettingsPage(Gtk.ScrolledWindow):
             )
             focus_later(switch)
 
-        def failed(error: BaseException) -> None:
+        def failed(_error: BaseException) -> None:
             restored = bool(
                 self.window.state.get("background_checks_enabled", previous)
             )
             self._set_background_switch(restored)
             switch.set_sensitive(True)
             self._update_background_description(restored)
-            message = self.window.t(
-                "background_checks_error",
-                detail=str(error),
-            )
+            message = self.window.t("background_checks_error")
             self.background_status.set_status(message, announce=False)
             self.background_status.announce(
                 message,
@@ -2155,10 +2227,7 @@ class SettingsPage(Gtk.ScrolledWindow):
         self._update_background_description(enabled)
         if error is None:
             return
-        message = self.window.t(
-            "background_checks_error",
-            detail=str(error),
-        )
+        message = self.window.t("background_checks_error")
         self.background_status.set_status(message, announce=False)
         self.background_status.announce(
             message,
@@ -2178,13 +2247,7 @@ class SettingsPage(Gtk.ScrolledWindow):
         )
 
     def _interval_label(self, minutes: int) -> str:
-        if minutes == 0:
-            return self.window.t("manual")
-        if minutes == 60:
-            return self.window.t("every_hour")
-        if minutes > 60:
-            return self.window.t("every_hours", hours=minutes // 60)
-        return self.window.t("every_minutes", minutes=minutes)
+        return self.window.t(self.INTERVAL_MESSAGE_KEYS[minutes])
 
     def _interval_control(self, body: Gtk.Box, key: str, title: str) -> None:
         dropdown = Gtk.DropDown(model=Gtk.StringList.new([self._interval_label(value) for value in self.INTERVALS]))

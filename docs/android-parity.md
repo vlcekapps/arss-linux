@@ -14,23 +14,23 @@ GNOME vlastní standardní rozhraní.
 | Výchozí RSS kanál, filtrování odběrů a volitelná poloha filtru | Stejné preference a pravidlo shody všech normalizovaných slov | Hotovo |
 | Přidání a síťové ověření RSS/Atom kanálu nebo podcastu | Samostatné přístupné formuláře; podcast musí mít přehratelný zvuk | Hotovo |
 | Přejmenování, smazání, kopírování a otevření adresy, nastavení výchozího RSS | Viditelné klávesnicové menu Možnosti u každého odběru | Hotovo |
-| Přidání adresy, katalog a import/export OPML | Akce jsou v menu Možnosti RSS nebo Možnosti podcastů; odmítnuté podcasty se započítají | Hotovo |
+| Přidání adresy, katalog a import/export OPML | Akce jsou v menu Možnosti RSS nebo Možnosti podcastů; odmítnuté podcasty se započítají a vlastní názvy z OPML se zachovají | Hotovo |
 | Lokální katalog 118 RSS zdrojů | Stejný auditovaný OPML katalog, hledání probíhá offline | Hotovo |
 | Podcast Index a regionální Apple Podcasts | Veřejný Podcast Index plus Apple; volitelně podepsané API s klíčem a tajemstvím | Hotovo |
 | RSS 2.0, Atom 1.0, enclosure, Media RSS, iTunes duration a TN.cz | Stejné formáty, řazení a bezpečnostní limity, včetně regresních fixture testů | Hotovo |
 | Pět prvotních RSS kanálů podle jazyka, pouze jednou | Stejné české a anglické sady a trvalý příznak inicializace | Hotovo |
 | Seznam článků a externí webový prohlížeč | Jeden fokusovatelný ovládací prvek na článek; žádný WebView | Hotovo |
-| Seznam epizod a interní přehrávač | Play/Pause, −15 s, +30 s, posuv při známé délce, hlasitost 0–100 % a rychlosti 0,5× až 2× | Hotovo |
+| Seznam epizod a interní přehrávač | Play/Pause, −15 s a +30 s i u streamu s neznámou délkou, posuv při známé délce, hlasitost 0–100 % a rychlosti 0,5× až 2× | Hotovo |
 | Pozastavení přehrávání po opuštění přehrávače/aplikace | Desktopová verze při ztrátě aktivity pokračuje; končí zavřením přehrávače/aplikace a reaguje jen na skutečné audio přerušení | Záměrná desktopová odchylka |
-| TV a rozhlas podle média, stanice a data | Stejné katalogy, zdroje, fallbacky a časová zóna Praha; TV stanice jsou souvisle seřazené podle vysílatele a nativně prohledávatelné | Hotovo |
-| Nova Sport 1–6, Oneplay Sport, ČRo, SRO, komerční rádia | Stejné stabilní katalogy a zdrojové identifikátory | Hotovo |
+| TV a rozhlas podle média, stanice a data | Aktuální desktopové katalogy, veřejné fallbacky a časová zóna Praha; stanice se ukládá hned při volbě a TV seznam je souvisle seřazený podle vysílatele a nativně prohledávatelný | Hotovo |
+| Nova Sport 1–6, Oneplay Sport 1–4 a MD1–MD10, ČRo, SRO a komerční rádia | Stabilní zobrazované názvy a přesné identifikátory poskytovatelů; zastaralé identifikátory se nahrazují jejich aktuálními protějšky | Záměrná desktopová aktualizace |
 | Detail pořadu, právě vysílá, odkazy a zvukový popis `AD`/`AD?` | Stejná významová pravidla, včetně neznámého stavu fallbacku | Hotovo |
 | Volitelné datum článků a epizod | Samostatné přepínače v Nastavení | Hotovo |
-| Čeština, angličtina a jazyk systému | Volba se projeví okamžitě vytvořením nového hlavního okna | Hotovo |
+| Čeština, angličtina a jazyk systému | Volba se projeví okamžitě vytvořením nového hlavního okna; síťové, parserové, katalogové a OPML chyby jsou celé v tomto jazyce | Hotovo |
 | Nápověda, verze a Poděkování autorovi | Přístupné obrazovky a přesný autorský odkaz | Hotovo |
 | Nezávislé intervaly RSS/podcastů od 1 minuty do 12 hodin | Stejné intervaly, v otevřené aplikaci přes GLib; po opt-in přes uživatelský systemd | Hotovo |
 | První kontrola bez záplavy starých oznámení a omezené checkpointy | Sdílené, atomické XDG checkpointy pro ruční i automatické načtení | Hotovo |
-| Seskupená oznámení, nejvýše jeden vlastní zvuk na dávku | Stabilní položkové notifikace a souhrn jen pro více položek přes `GNotification`; zvuk vybírá GNOME | Záměrná desktopová odchylka |
+| Seskupená oznámení, nejvýše jeden vlastní zvuk na dávku | Stabilní položkové notifikace a souhrn jen pro více položek přes `GNotification`; podcastová položka nejprve zvolí kartu Podcasty a zvuk vybírá GNOME | Záměrná desktopová odchylka |
 | Systémový, tichý, RSS a Alert 1–4 zvlášť pro RSS/podcasty | Vlastní volby a ukázky jsou odstraněné; veškerou zvukovou signalizaci oznámení řídí GNOME | Záměrná desktopová odchylka |
 | Kompatibilní `readFeeds.opml` a `podcasts.opml` | Soubory zůstávají kompatibilní a zapisují se atomicky pod XDG data | Hotovo |
 | Úplná práce z klávesnice a čtečky obrazovky | Standardní GTK role, názvy, nadpisy, stavy, živá hlášení a jediný účelný Tab stop | Hotovo |

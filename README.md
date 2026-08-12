@@ -102,7 +102,8 @@ Lokální RPM a zdrojové SRPM se sestaví bez přístupu k síti:
 
 ```bash
 sudo dnf install \
-  rpm-build meson ninja-build python3-devel python3-gobject python3-requests \
+  rpm-build meson ninja-build python3-devel python3-setuptools \
+  python3-gobject python3-requests \
   gtk4 libadwaita appstream desktop-file-utils \
   gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good \
   gstreamer1-plugins-bad-free gstreamer1-plugins-ugly-free
@@ -116,16 +117,21 @@ potom vytvoří normalizovaný zdrojový archiv v dočasném adresáři pod
 `/tmp`, spustí deterministické jednotkové testy a validaci metadat a nakonec
 sestaví binární RPM i SRPM. Normalizovaný archiv `arss-VERZE.tar.gz` uloží
 k balíčkům, takže je možné samostatně ověřit jeho kontrolní součet.
-Fedora release lze pro další sestavení stejné verze zvýšit například
+RPM release lze pro další sestavení stejné verze zvýšit například
 příkazem:
 
 ```bash
 ARSS_RPM_RELEASE=3 ./tools/build-rpm.sh
 ```
 
+RPM obsahující moduly Pythonu je nutné sestavit zvlášť pro každé vydání
+Fedory, které přechází na nové Python ABI. Balíček `1.6.14-2.fc45` je ověřený
+na Fedoře 45 s Pythonem 3.15; starší sestavení `.fc44` vyžaduje Python 3.14 a
+na Fedoře 45 se proto nemá instalovat ani používat.
+
 Jiné umístění výsledků lze zvolit pomocí `ARSS_RPM_OUTPUT`. Pro opakovatelný
 obsah zdrojového archivu je výchozí `SOURCE_DATE_EPOCH` pevně svázán s
-vydáním 1.6.12; při nové verzi je nutné aktualizovat jej spolu s datem
+vydáním 1.6.14; při nové verzi je nutné aktualizovat jej spolu s datem
 vydání. Samotné RPM kontejnery nemusejí mít mezi dvěma buildy shodný SHA-256,
 protože RPM 6 ukládá do SRPM expandovanou dočasnou cestu; normalizovaný
 zdrojový archiv a instalovaný payload jsou však shodné.
@@ -138,8 +144,13 @@ python3 -m unittest discover -s tests -v
 ```
 
 Současná automatická sada je deterministická a nepřistupuje k síti. Samostatné
-živé testy veřejných endpointů zatím v repozitáři nejsou; případné budoucí testy
-musí být výslovně zapnuté pomocí `ARSS_RUN_LIVE_TESTS=1`. V grafické uživatelské
+živé testy prvotních feedů a podcastových katalogů lze spustit pouze výslovně:
+
+```bash
+ARSS_RUN_LIVE_TESTS=1 python3 -m unittest discover -s live_tests -v
+```
+
+Tyto testy nejsou součástí běžné sady ani RPM `%check`. V grafické uživatelské
 relaci lze navíc spustit `python3 tools/gui_smoke.py` a
 `python3 tools/large_text_smoke.py` (22 pt, angličtina i čeština, šířka 320 px)
 a `python3 tools/accessibility_smoke.py`. Před vydáním je nutné celé rozhraní

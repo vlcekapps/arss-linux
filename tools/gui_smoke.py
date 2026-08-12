@@ -428,8 +428,8 @@ class SmokeApplication(Adw.Application):
             assert "Programme description" in details.get_text()
             player_window._render(PlaybackState(PlaybackPhase.READY, 0, 0))
             assert not player_window.scale.get_sensitive()
-            assert not player_window.seek_back.get_sensitive()
-            assert not player_window.seek_forward.get_sensitive()
+            assert player_window.seek_back.get_sensitive()
+            assert player_window.seek_forward.get_sensitive()
             assert player_window.play.get_sensitive()
             player_window._render(PlaybackState(PlaybackPhase.READY, 0, 60_000))
             assert player_window.scale.get_sensitive()
@@ -547,6 +547,9 @@ class SmokeApplication(Adw.Application):
             opened.close()
 
             items_window = self.windows[2]
+            for window in self.windows:
+                if window is not items_window:
+                    window.set_visible(False)
             items_window.present()
             self._items_navigation_waits = 0
             GLib.timeout_add(25, self.wait_for_items_navigation)
@@ -568,6 +571,9 @@ class SmokeApplication(Adw.Application):
                 and row.get_width() > 0
                 and row.get_height() > 0
                 for row in rows
+            ) and (
+                items_window.is_active()
+                and self.get_active_window() is items_window
             ):
                 assert rows[0] is not None
                 rows[0].grab_focus()
