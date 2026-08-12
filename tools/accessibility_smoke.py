@@ -957,6 +957,12 @@ def main() -> int:
         # the accessibility tree and production app remain toolkit-identical.
         if environment.get("DISPLAY"):
             environment["GDK_BACKEND"] = "x11"
+            # Fedora 45 nightly's GTK 4.23/IBus X11 input context currently
+            # recurses while constructing a text widget.  This process-local
+            # fallback keeps the synthetic-key harness independent of that
+            # X11-only stack bug; the normal Wayland application continues to
+            # use the user's configured input method.
+            environment["GTK_IM_MODULE"] = "gtk-im-context-simple"
         process = subprocess.Popen(
             [sys.executable, "-m", "arss"],
             cwd=PROJECT,

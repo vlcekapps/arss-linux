@@ -102,7 +102,8 @@ Lokální RPM a zdrojové SRPM se sestaví bez přístupu k síti:
 
 ```bash
 sudo dnf install \
-  rpm-build meson ninja-build python3-devel python3-gobject python3-requests \
+  rpm-build meson ninja-build python3-devel python3-setuptools \
+  python3-gobject python3-requests \
   gtk4 libadwaita appstream desktop-file-utils \
   gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good \
   gstreamer1-plugins-bad-free gstreamer1-plugins-ugly-free
@@ -116,12 +117,17 @@ potom vytvoří normalizovaný zdrojový archiv v dočasném adresáři pod
 `/tmp`, spustí deterministické jednotkové testy a validaci metadat a nakonec
 sestaví binární RPM i SRPM. Normalizovaný archiv `arss-VERZE.tar.gz` uloží
 k balíčkům, takže je možné samostatně ověřit jeho kontrolní součet.
-Fedora release lze pro další sestavení stejné verze zvýšit například
+RPM release lze pro další sestavení stejné verze zvýšit například
 příkazem:
 
 ```bash
-ARSS_RPM_RELEASE=2 ./tools/build-rpm.sh
+ARSS_RPM_RELEASE=3 ./tools/build-rpm.sh
 ```
+
+RPM obsahující moduly Pythonu je nutné sestavit zvlášť pro každé vydání
+Fedory, které přechází na nové Python ABI. Balíček `1.6.14-2.fc45` je ověřený
+na Fedoře 45 s Pythonem 3.15; starší sestavení `.fc44` vyžaduje Python 3.14 a
+na Fedoře 45 se proto nemá instalovat ani používat.
 
 Jiné umístění výsledků lze zvolit pomocí `ARSS_RPM_OUTPUT`. Pro opakovatelný
 obsah zdrojového archivu je výchozí `SOURCE_DATE_EPOCH` pevně svázán s

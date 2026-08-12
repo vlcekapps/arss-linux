@@ -1,4 +1,4 @@
-%{!?arss_release:%global arss_release 1}
+%{!?arss_release:%global arss_release 2}
 
 Name:           arss
 Version:        1.6.14
@@ -72,6 +72,11 @@ systemd-analyze verify redhat-linux-build/arss-monitor@.service data/arss-monito
 %doc %{_datadir}/doc/arss-linux/desktop-integration.md
 
 %changelog
+* Wed Aug 12 2026 Pavel Vlček <pavel@example.invalid> - 1.6.14-2
+- Rebuild the package for Fedora 45 and the Python 3.15 ABI
+- Verify the current GTK, libadwaita and GStreamer prerelease stack
+- Isolate the X11 AT-SPI harness from a Fedora 45 nightly IBus recursion
+
 * Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.14-1
 - Complete the audited Android feature parity across OPML, playback and guide state
 - Restore Oneplay Sport MD1 through MD10 and correct podcast notification context

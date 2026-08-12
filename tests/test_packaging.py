@@ -43,6 +43,23 @@ def render_launcher_template(relative_path: str) -> str:
 
 
 class PackagingContractTest(unittest.TestCase):
+    def test_default_rpm_release_matches_spec_and_build_script(self) -> None:
+        spec = (ROOT / "packaging" / "arss.spec").read_text(encoding="utf-8")
+        build_script = (ROOT / "tools" / "build-rpm.sh").read_text(
+            encoding="utf-8"
+        )
+        spec_release = re.search(
+            r"%global arss_release ([1-9][0-9]*)",
+            spec,
+        )
+        script_release = re.search(
+            r'rpm_release="\$\{ARSS_RPM_RELEASE:-([1-9][0-9]*)\}"',
+            build_script,
+        )
+        self.assertIsNotNone(spec_release)
+        self.assertIsNotNone(script_release)
+        self.assertEqual(spec_release.group(1), script_release.group(1))
+
     def test_meson_installs_every_runtime_python_module(self) -> None:
         meson = (ROOT / "meson.build").read_text(encoding="utf-8")
         installed = set(re.findall(r"'(arss/[^']+\.py)'", meson))
