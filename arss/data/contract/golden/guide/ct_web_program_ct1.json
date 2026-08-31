@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schemas/normalized-guide-program.schema.json",
+  "schemaVersion": "1.0.0",
+  "source": "ct.web-schedule",
+  "stationId": "tv.ct1",
+  "date": "2026-07-22",
+  "programs": [
+    {
+      "id": "ct-web:ct1:538deefc352175d5",
+      "startMillis": 1784757000000,
+      "endMillis": 1784758500000,
+      "title": "Noční dokument (2/4) – První část",
+      "description": "První & zajímavý popis pořadu.",
+      "audioDescription": true,
+      "audioDescriptionKnown": true,
+      "programUrl": "https://www.ceskatelevize.cz/porady/10000000001-nocni-dokument/",
+      "archiveUrl": null
+    },
+    {
+      "id": "ct-web:ct1:c270a5474e1edd4d",
+      "startMillis": 1784758500000,
+      "endMillis": 1784761200000,
+      "title": "Ranní zprávy",
+      "description": "Aktuální informace z domova i ze světa.",
+      "audioDescription": false,
+      "audioDescriptionKnown": true,
+      "programUrl": "https://www.ceskatelevize.cz/porady/10000000002-ranni-zpravy/",
+      "archiveUrl": null
+    },
+    {
+      "id": "ct-web:ct1:43b1a694e2907b1a",
+      "startMillis": 1784761200000,
+      "endMillis": 1784763000000,
+      "title": "Archiv ČT",
+      "description": "Výběr z televizního archivu.",
+      "audioDescription": false,
+      "audioDescriptionKnown": true,
+      "programUrl": "https://www.ceskatelevize.cz/porady/10000000003-archiv/",
+      "archiveUrl": null
+    }
+  ]
+}

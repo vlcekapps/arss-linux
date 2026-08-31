@@ -103,6 +103,7 @@ Lokální RPM a zdrojové SRPM se sestaví bez přístupu k síti:
 ```bash
 sudo dnf install \
   rpm-build meson ninja-build python3-devel python3-gobject python3-requests \
+  python3-setuptools \
   gtk4 libadwaita appstream desktop-file-utils \
   gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good \
   gstreamer1-plugins-bad-free gstreamer1-plugins-ugly-free
@@ -125,7 +126,7 @@ ARSS_RPM_RELEASE=3 ./tools/build-rpm.sh
 
 Jiné umístění výsledků lze zvolit pomocí `ARSS_RPM_OUTPUT`. Pro opakovatelný
 obsah zdrojového archivu je výchozí `SOURCE_DATE_EPOCH` pevně svázán s
-vydáním 1.6.12; při nové verzi je nutné aktualizovat jej spolu s datem
+aktuálním vydáním; při nové verzi je nutné aktualizovat jej spolu s datem
 vydání. Samotné RPM kontejnery nemusejí mít mezi dvěma buildy shodný SHA-256,
 protože RPM 6 ukládá do SRPM expandovanou dočasnou cestu; normalizovaný
 zdrojový archiv a instalovaný payload jsou však shodné.
@@ -145,6 +146,20 @@ relaci lze navíc spustit `python3 tools/gui_smoke.py` a
 a `python3 tools/accessibility_smoke.py`. Před vydáním je nutné celé rozhraní
 projít s Orkou, klávesnicí a ve světlém i tmavém motivu.
 
+Fedora CI spouští stejné tři automatické GUI kontroly v izolovaném Xvfb a
+D-Bus/AT-SPI sezení pomocí `tools/run-headless-smoke.sh`; nenahrazují závěrečnou
+ruční kontrolu s Orkou, ale před sestavením RPM ověří skutečný accessibility
+strom, ovládání, české i anglické rozložení a zvětšený text.
+
+## Společný kontrakt platforem
+
+Katalog televizních a rozhlasových stanic už není zapsán přímo v Pythonu.
+Linux načítá ověřenou vendored kopii jazykově neutrálního ARSS Contractu,
+zachovává stabilní ID napříč platformami a při prvním použití bezpečně migruje
+starší providerová ID. Aktualizační nástroj nepoužívá submoduly ani síť a
+plánovaný workflow pouze otevře kontrolovatelný pull request. Podrobný postup a
+formát locku popisuje `docs/contract.md`.
+
 ## Přístupnost
 
 Implementace je kontrolována proti vznikajícímu
@@ -158,11 +173,11 @@ obsahových seznamů proto navíc vychází z oficiální dokumentace
 Šipky mění položku, Enter ji aktivuje a Tab projde jen jejími vedlejšími akcemi.
 GTK 4.20 je minimem mimo jiné proto, že od této verze standardní
 `Gtk.DropDown` zveřejňuje asistivním technologiím vybranou položku a textovou
-hodnotu bez vlastní, neúplné implementace. Seznam stanic používá také nativní
-vyhledávání podle vzoru „Search Enabled DropDown“ z téhož guide, včetně
-textového výrazu `GtkStringObject.string`. Klávesová cesta je Enter nebo
-mezerník, Shift+Tab do vyhledávacího pole, prefix názvu, Tab zpět k výsledkům
-a Enter pro potvrzení.
+  hodnotu bez vlastní, neúplné implementace. Před seznamem stanic je standardní
+  `Gtk.SearchEntry`, která filtruje standardní `Gtk.DropDown` podle názvů i
+  kontraktových aliasů. Používá přesnou společnou normalizaci NFKD, case-folding,
+  prefixy slov a shodu celé normalizované podřetězcové fráze. Klávesová cesta je
+  Tab do vyhledávání, zadání výrazu, Tab do seznamu a Enter pro potvrzení.
 
 - pouze standardní GTK ovládací prvky a explicitní role AT-SPI;
 - viditelné textové akce, žádná funkce dostupná jen gestem nebo ikonou;
@@ -183,4 +198,7 @@ a Enter pro potvrzení.
 ARSS je svobodný software vydaný pod licencí GNU General Public License,
 verze 3 nebo kterákoli pozdější. Přibalený katalog doporučených RSS zdrojů je
 samostatně poskytován pod CC0 1.0, jak uvádí
-`arss/data/rss_directory_NOTICE.txt`.
+`arss/data/rss_directory_NOTICE.txt`. Vendored kopie společného ARSS Contractu
+je poskytována pod licencí MIT; její úplné znění zůstává v
+`arss/data/contract/LICENSE`. Původ a CC0 licenci kanonického RSS katalogu
+uvádí také `arss/data/contract/THIRD_PARTY_NOTICES.md`.

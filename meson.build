@@ -1,6 +1,6 @@
 project(
   'arss-linux',
-  version: '1.6.12',
+  version: '1.7.0',
   meson_version: '>=1.2.0',
 )
 
@@ -70,10 +70,12 @@ python.install_sources(
     'arss/audio_session.py',
     'arss/background.py',
     'arss/checkpoints.py',
+    'arss/contract.py',
     'arss/directory.py',
     'arss/feed.py',
     'arss/gtk_helpers.py',
     'arss/guide.py',
+    'arss/guide_catalog.py',
     'arss/i18n.py',
     'arss/models.py',
     'arss/monitor.py',
@@ -81,6 +83,7 @@ python.install_sources(
     'arss/notifications.py',
     'arss/opml.py',
     'arss/playback.py',
+    'arss/search.py',
     'arss/storage.py',
     'arss/ui.py',
   ],
@@ -160,6 +163,7 @@ install_data(
 )
 install_data(
   'docs/android-parity.md',
+  'docs/contract.md',
   'docs/desktop-integration.md',
   install_dir: join_paths(get_option('datadir'), 'doc', 'arss-linux'),
 )

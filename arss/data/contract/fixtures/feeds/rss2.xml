@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title><![CDATA[<b>České</b> &amp; zprávy]]></title>
+    <link>https://example.test/</link>
+    <description>Testovací RSS kanál</description>
+    <language>cs-CZ</language>
+
+    <item>
+      <guid>https://example.test/clanky/starsi</guid>
+      <title>Starší článek</title>
+      <link>https://example.test/clanky/starsi</link>
+      <pubDate>Wed, 22 Jul 2026 10:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Starší popis.</p>]]></description>
+    </item>
+
+    <item>
+      <guid isPermaLink="false">article-new</guid>
+      <title><![CDATA[<strong>Novější</strong> &amp; test]]></title>
+      <link>/clanky/novejsi</link>
+      <pubDate>Wed, 22 Jul 2026 13:15:00 +0200</pubDate>
+      <description><![CDATA[<p>Novější popis.</p>]]></description>
+      <enclosure url="https://cdn.example.test/audio.mp3" type="audio/mpeg" length="1234" />
+    </item>
+
+    <item>
+      <link>/clanky/bez-nazvu</link>
+      <pubDate>toto není datum</pubDate>
+    </item>
+
+    <item>
+      <guid isPermaLink="false">not-a-web-address</guid>
+      <title>Položka bez odkazu se přeskočí</title>
+    </item>
+  </channel>
+</rss>

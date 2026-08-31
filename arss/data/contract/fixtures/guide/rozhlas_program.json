@@ -1,0 +1,23 @@
+{
+  "timestamp":"2026-07-22T10:00:00+02:00",
+  "data":[
+    {
+      "station":"radiozurnal",
+      "id":21191380,
+      "title":"Zprávy",
+      "description":"Zpravodajství z Česka i ze světa.",
+      "since":"2026-07-22T00:00:00+02:00",
+      "till":"2026-07-22T00:09:00+02:00",
+      "edition":{"profile":"https://radiozurnal.rozhlas.cz/zpravy","archive":null}
+    },
+    {
+      "station":"radiozurnal",
+      "id":21191383,
+      "title":"Dvacet minut Radiožurnálu",
+      "description":"Rozhovor.",
+      "since":"2026-07-22T00:10:00+02:00",
+      "till":"2026-07-22T00:30:00+02:00",
+      "edition":{"profile":"https://radiozurnal.rozhlas.cz/dvacet-minut","archive":"https://api.mujrozhlas.cz/show-redirect/5997743"}
+    }
+  ]
+}

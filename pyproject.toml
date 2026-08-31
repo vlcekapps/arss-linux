@@ -4,12 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arss-linux"
-version = "1.6.12"
+version = "1.7.0"
 description = "Accessible GTK 4 RSS, podcast and Czech TV/radio guide reader"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE", "arss/data/rss_directory_NOTICE.txt"]
+license = "GPL-3.0-or-later AND CC0-1.0 AND MIT"
+license-files = [
+  "LICENSE",
+  "arss/data/rss_directory_NOTICE.txt",
+  "arss/data/contract/LICENSE",
+  "arss/data/contract/THIRD_PARTY_NOTICES.md",
+]
 authors = [{ name = "Pavel Vlček" }]
 keywords = ["RSS", "Atom", "podcast", "GTK4", "accessibility"]
 dependencies = [
@@ -31,4 +36,9 @@ include-package-data = true
 include = ["arss*"]
 
 [tool.setuptools.package-data]
-arss = ["data/*"]
+arss = [
+  "data/*",
+  "data/**/*",
+  "data/contract/.*",
+  "data/contract/.github/workflows/*",
+]

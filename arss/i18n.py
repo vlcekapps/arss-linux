@@ -104,19 +104,17 @@ MESSAGES: dict[str, dict[str, str]] = {
         "radio": "Rozhlas",
         "medium": "Médium",
         "station": "Stanice",
-        "station_search_hint": (
-            "Otevřete seznam a pomocí Shift+Tab přejděte do "
-            "vyhledávacího pole."
-        ),
+        "station_search": "Hledat stanici",
+        "station_search_hint": "Název nebo alias stanice",
         "date": "Datum",
         "date_format": "RRRR-MM-DD",
         "invalid_date": "Zadejte platné datum ve formátu RRRR-MM-DD.",
         "no_station": "Vyberte dostupnou stanici.",
         "show_program": "Zobrazit program",
         "guide_intro": (
-            "Vyberte médium, stanici a datum. Televizní stanice jsou "
-            "seřazené podle vysílatele a otevřený seznam lze filtrovat "
-            "podle názvu. Každý pořad je jediný přístupný řádek."
+            "Vyberte médium, stanici a datum. Stanice jsou seřazené podle "
+            "společného katalogu a lze je filtrovat podle názvu nebo aliasu. "
+            "Každý pořad je jediný přístupný řádek."
         ),
         "guide_source_note": "Data poskytují Česká televize, Centrum.cz, Český rozhlas a SMS.cz.",
         "program_heading": "{station} — {date}",
@@ -210,10 +208,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "pokračuje i při přechodu do jiného okna a skončí zavřením "
             "přehrávače nebo ARSS. V TV programu vyberte "
             "televizi nebo rádio, stanici a datum ve formátu RRRR-MM-DD. "
-            "Televizní stanice jsou seřazené podle vysílatele. Seznam stanice "
-            "otevřete Enterem nebo mezerníkem, Shift+Tabem přejděte do "
-            "vyhledávacího pole, napište začátek názvu a Tabem se vraťte "
-            "k výsledkům. Potom zvolte Zobrazit program a aktivací pořadu "
+            "Stanice jsou seřazené podle společného katalogu. Do pole Hledat "
+            "stanici napište začátky slov z názvu nebo aliasu a z výsledků "
+            "vyberte požadovanou stanici. Potom zvolte Zobrazit program a aktivací pořadu "
             "otevřete jeho podrobnosti. "
             "Tlačítko Možnosti u odběru umožňuje otevřít nebo kopírovat zdrojovou "
             "adresu, položku přejmenovat či smazat a RSS kanál nastavit jako "
@@ -333,18 +330,17 @@ MESSAGES: dict[str, dict[str, str]] = {
         "radio": "Radio",
         "medium": "Medium",
         "station": "Station",
-        "station_search_hint": (
-            "Open the list and press Shift+Tab to reach the search field."
-        ),
+        "station_search": "Search stations",
+        "station_search_hint": "Station name or alias",
         "date": "Date",
         "date_format": "YYYY-MM-DD",
         "invalid_date": "Enter a valid date in YYYY-MM-DD format.",
         "no_station": "Select an available station.",
         "show_program": "Show programme",
         "guide_intro": (
-            "Choose a medium, station and date. Television stations are "
-            "ordered by broadcaster and the open list can be filtered by "
-            "name. Every programme is one accessible row."
+            "Choose a medium, station and date. Stations follow the shared "
+            "catalogue order and can be filtered by name or alias. Every "
+            "programme is one accessible row."
         ),
         "guide_source_note": "Data is provided by Czech Television, Centrum.cz, Czech Radio and SMS.cz.",
         "program_heading": "{station} — {date}",
@@ -438,9 +434,9 @@ MESSAGES: dict[str, dict[str, str]] = {
             "continues when you switch to another window and stops when the "
             "player or ARSS closes. In TV guide, choose television "
             "or radio, a station and a date in YYYY-MM-DD format. Television "
-            "stations are ordered by broadcaster. Open the station list with "
-            "Enter or Space, press Shift+Tab to reach its search field, type "
-            "the start of a name, and press Tab to return to the results. Then "
+            "stations follow the shared catalogue order. In Search stations, "
+            "type word prefixes from a station name or alias, then choose the "
+            "wanted station from the results. Then "
             "select Show programme and activate a programme to open its details. "
             "The Options "
             "button for a subscription can open or copy its source address, rename "

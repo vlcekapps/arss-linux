@@ -5,8 +5,14 @@ include meson_options.txt
 include pyproject.toml
 include run.sh
 include tools/build-rpm.sh
+include tools/run-headless-smoke.sh
+
+recursive-include .github/workflows *.yml *.yaml
 
 recursive-include arss/data *
+include arss/data/contract/.gitattributes
+include arss/data/contract/.gitignore
+recursive-include arss/data/contract/.github *
 prune arss/data/sounds
 recursive-include data *
 recursive-include docs *.md

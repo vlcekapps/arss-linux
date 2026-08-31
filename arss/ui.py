@@ -27,8 +27,11 @@ from . import __version__
 from .directory import podcast_search_locale, search_text_matches
 from .guide import (
     GuideMedium,
+    canonical_station_id,
     guide_date_at as guide_date_for_instant,
     order_guide_stations,
+    station_has_provider,
+    station_matches_search,
 )
 from .gtk_helpers import (
     AccessibleMenuPopover,
@@ -1481,6 +1484,7 @@ class GuidePage(Gtk.ScrolledWindow):
         self.set_focusable(False)
         self.window = window
         self.stations: list[Any] = []
+        self._all_stations: list[Any] = []
         self._station_request = 0
         self.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -1497,20 +1501,22 @@ class GuidePage(Gtk.ScrolledWindow):
         self.medium.set_selected(selected_medium)
         self.medium.connect("notify::selected", self._medium_changed)
         body.append(labelled(f"_{window.t('medium')}", self.medium))
-        station_expression = Gtk.PropertyExpression.new(
-            Gtk.StringObject,
-            None,
-            "string",
-        )
-        self.station = Gtk.DropDown.new(None, station_expression)
-        self.station.set_enable_search(True)
-        self.station.set_search_match_mode(Gtk.StringFilterMatchMode.PREFIX)
         station_search_hint = window.t("station_search_hint")
-        self.station.set_tooltip_text(station_search_hint)
-        self.station.update_property(
-            [Gtk.AccessibleProperty.DESCRIPTION],
-            [station_search_hint],
+        self.station_search = Gtk.SearchEntry(
+            placeholder_text=station_search_hint,
         )
+        self.station_search.connect(
+            "search-changed",
+            self._station_search_changed,
+        )
+        self.station_search.set_sensitive(False)
+        body.append(
+            labelled(
+                f"_{window.t('station_search')}",
+                self.station_search,
+            )
+        )
+        self.station = Gtk.DropDown()
         self.station.set_sensitive(False)
         body.append(labelled(f"_{window.t('station')}", self.station))
         self.date = Gtk.Entry(text=current_guide_date().isoformat(), activates_default=True)
@@ -1549,12 +1555,52 @@ class GuidePage(Gtk.ScrolledWindow):
     def _medium_changed(self, *_args: object) -> None:
         value = self._medium_value()
         self.window.state.set("guide_medium", value)
+        if self.station_search.get_text():
+            self.station_search.set_text("")
         self._load_stations()
+
+    def _station_search_changed(self, *_args: object) -> None:
+        selected = self.station.get_selected()
+        selected_id = (
+            self.stations[selected].id
+            if selected < len(self.stations)
+            else None
+        )
+        self._render_station_model(selected_id)
+
+    def _render_station_model(self, wanted_id: object = None) -> None:
+        query = self.station_search.get_text()
+        visible = [
+            station
+            for station in self._all_stations
+            if station_matches_search(query, station)
+        ]
+        self.stations = visible
+        self.station.set_model(
+            Gtk.StringList.new([station.name for station in visible])
+        )
+        index = next(
+            (
+                position
+                for position, station in enumerate(visible)
+                if station.id == wanted_id
+            ),
+            0,
+        )
+        self.station.set_selected(
+            index if visible else Gtk.INVALID_LIST_POSITION
+        )
+        self.station.set_sensitive(bool(visible))
+        self.show.set_sensitive(bool(visible))
 
     def _load_stations(self) -> None:
         medium = self._medium_value()
         self._station_request += 1
         request = self._station_request
+        self._all_stations = []
+        self.stations = []
+        self.station.set_model(Gtk.StringList.new([]))
+        self.station_search.set_sensitive(False)
         self.station.set_sensitive(False)
         self.show.set_sensitive(False)
         set_invalid(self.station, False)
@@ -1569,40 +1615,35 @@ class GuidePage(Gtk.ScrolledWindow):
                 stations,
                 GuideMedium(medium),
             )
-            self.stations = ordered_stations
-            self.station.set_model(
-                Gtk.StringList.new(
-                    [station.name for station in ordered_stations]
-                )
-            )
+            self._all_stations = ordered_stations
             wanted_key = (
                 "guide_radio_station_id"
                 if medium == "radio"
                 else "guide_television_station_id"
             )
             wanted = self.window.state.get(wanted_key)
-            index = next(
-                (
-                    position
-                    for position, station in enumerate(ordered_stations)
-                    if station.id == wanted
-                ),
-                0,
+            stable_wanted = (
+                canonical_station_id(wanted)
+                if isinstance(wanted, str)
+                else wanted
             )
-            self.station.set_selected(
-                index if ordered_stations else Gtk.INVALID_LIST_POSITION
-            )
-            self.station.set_sensitive(True)
-            self.show.set_sensitive(True)
+            if stable_wanted != wanted:
+                # Persist the migration only after the verified catalogue is
+                # available, keeping an interrupted upgrade recoverable.
+                self.window.state.set(wanted_key, stable_wanted)
+            self._render_station_model(stable_wanted)
+            self.station_search.set_sensitive(True)
 
         def failed(error: BaseException) -> None:
             if request != self._station_request or medium != self._medium_value():
                 return
             self.busy.stop()
             self.stations = []
+            self._all_stations = []
             self.station.set_model(Gtk.StringList.new([]))
-            self.station.set_sensitive(True)
-            self.show.set_sensitive(True)
+            self.station_search.set_sensitive(True)
+            self.station.set_sensitive(False)
+            self.show.set_sensitive(False)
             self.status.set_status(str(error))
 
         self.window.run_async(
@@ -1634,11 +1675,6 @@ class GuidePage(Gtk.ScrolledWindow):
         key = "guide_radio_station_id" if medium == "radio" else "guide_television_station_id"
         self.window.state.set(key, selected_station.id)
         ProgramWindow(self.window, selected_station, selected_date).present()
-
-
-CZECH_TELEVISION_STATION_IDS = frozenset(
-    {"centrum:1", "centrum:2", "centrum:18", "centrum:24", "centrum:357", "centrum:358"}
-)
 
 
 def program_start_millis(entry: Any) -> int:
@@ -1689,7 +1725,7 @@ def format_guide_date(value: Date, translator: Translator) -> str:
 
 def has_unknown_audio_description(station: Any, entry: Any) -> bool:
     return (
-        str(getattr(station, "id", "")) in CZECH_TELEVISION_STATION_IDS
+        station_has_provider(station, "ct")
         and not bool(getattr(entry, "audio_description", False))
         and not bool(getattr(entry, "audio_description_known", False))
     )

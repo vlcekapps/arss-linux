@@ -1,0 +1,38 @@
+{
+  "$schema": "../../schemas/normalized-feed.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceUrl": "https://example.test/feeds/news.xml",
+  "title": "České & zprávy",
+  "items": [
+    {
+      "title": "Novější & test",
+      "url": "https://example.test/clanky/novejsi",
+      "sourceId": "article-new",
+      "publishedText": "Wed, 22 Jul 2026 13:15:00 +0200",
+      "publishedAtMillis": 1784718900000,
+      "mediaUrl": "https://cdn.example.test/audio.mp3",
+      "mediaType": "audio/mpeg",
+      "durationText": null
+    },
+    {
+      "title": "Starší článek",
+      "url": "https://example.test/clanky/starsi",
+      "sourceId": "https://example.test/clanky/starsi",
+      "publishedText": "Wed, 22 Jul 2026 10:00:00 GMT",
+      "publishedAtMillis": 1784714400000,
+      "mediaUrl": null,
+      "mediaType": null,
+      "durationText": null
+    },
+    {
+      "title": "",
+      "url": "https://example.test/clanky/bez-nazvu",
+      "sourceId": null,
+      "publishedText": "toto není datum",
+      "publishedAtMillis": null,
+      "mediaUrl": null,
+      "mediaType": null,
+      "durationText": null
+    }
+  ]
+}

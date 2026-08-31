@@ -20,20 +20,20 @@ import re
 import threading
 import time
 from typing import Any, Protocol
-import unicodedata
 from urllib.parse import quote, urlencode, urldefrag, urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
 import requests
+
+from .contract import load_embedded_contract
+from .search import normalize_search_text, search_text_matches
 
 
 MAXIMUM_RESULTS = 60
 MAXIMUM_PROVIDER_RESULTS = 200
 MAXIMUM_APPLE_QUERY_VARIANTS = 4
 ALL_QUERY_TERMS_MATCH_SCORE = 10_000
-DEFAULT_DIRECTORY_PATH = (
-    Path(__file__).resolve().parent / "data" / "rss_directory.opml"
-)
+DEFAULT_DIRECTORY_PATH = load_embedded_contract().rss_directory_path
 
 _MULTIPLE_SPACES = re.compile(r"\s+")
 _TWO_LETTER_COUNTRY = re.compile(r"^[A-Za-z]{2}$")
@@ -47,30 +47,6 @@ class DirectoryEntry:
     title: str
     url: str
     detail: str = ""
-
-
-def normalize_search_text(value: str) -> str:
-    """Return locale-independent, diacritic-free searchable text."""
-
-    decomposed = unicodedata.normalize("NFD", value)
-    without_marks = "".join(
-        character
-        for character in decomposed
-        if unicodedata.category(character) not in {"Mn", "Mc", "Me"}
-    )
-    words = "".join(
-        character if unicodedata.category(character)[:1] in {"L", "N"} else " "
-        for character in without_marks.lower()
-    )
-    return _MULTIPLE_SPACES.sub(" ", words).strip()
-
-
-def search_text_matches(query: str, *values: str) -> bool:
-    terms = normalize_search_text(query).split()
-    if not terms:
-        return True
-    searchable = normalize_search_text(" ".join(values))
-    return all(term in searchable for term in terms)
 
 
 class RssDirectory:

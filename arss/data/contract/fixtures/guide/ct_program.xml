@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<program datum_vysilani="2026-07-22" kanal="ct1" generovano="2026-07-21 12:00:00">
+  <porad>
+    <linky>
+      <program>https://www.ceskatelevize.cz/porady/100/prvni/</program>
+      <ivysilani>https://www.ceskatelevize.cz/ivysilani/100/</ivysilani>
+    </linky>
+    <datum>2026-07-22</datum>
+    <cas>23:50</cas>
+    <nazvy>
+      <nazev>Noční dokument</nazev>
+      <nazev_casti>První část</nazev_casti>
+    </nazvy>
+    <dil>2/4</dil>
+    <stopaz>025:30</stopaz>
+    <noticka>Popis pořadu.</noticka>
+    <ikonky><ad>1</ad></ikonky>
+  </porad>
+  <porad>
+    <linky><program>https://www.ceskatelevize.cz/porady/101/druhy/</program></linky>
+    <datum>2026-07-23</datum>
+    <cas>00:15</cas>
+    <nazvy><nazev>Zprávy</nazev><nazev_casti></nazev_casti></nazvy>
+    <dil></dil>
+    <stopaz></stopaz>
+    <noticka></noticka>
+    <ikonky><ad>0</ad></ikonky>
+  </porad>
+</program>

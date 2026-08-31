@@ -63,7 +63,7 @@ class UiHelperTest(unittest.TestCase):
         )
 
     def test_version_fallback_uses_the_installed_package_version(self) -> None:
-        self.assertEqual("1.6.12", application_version(SimpleNamespace()))
+        self.assertEqual("1.7.0", application_version(SimpleNamespace()))
         self.assertEqual(
             "custom",
             application_version(SimpleNamespace(version="custom")),
@@ -128,8 +128,8 @@ class UiHelperTest(unittest.TestCase):
         self.assertIn("systemd user timers", help_text)
         self.assertIn("GNOME notifications", help_text)
         self.assertIn("exclusively controls the system notification sound", help_text)
-        self.assertIn("ordered by broadcaster", help_text)
-        self.assertIn("Shift+Tab", help_text)
+        self.assertIn("shared catalogue order", help_text)
+        self.assertIn("name or alias", help_text)
 
     def test_only_absolute_http_addresses_are_external_web_links(self) -> None:
         self.assertTrue(valid_web_url("https://example.test/path"))
@@ -144,7 +144,8 @@ class UiHelperTest(unittest.TestCase):
             "https://example.test/private-url-token",
         )
         self.assertTrue(subscription_matches_filter("rozhlas cesky", subscription))
-        self.assertTrue(subscription_matches_filter("VINOH-RADSKA! 12", subscription))
+        self.assertTrue(subscription_matches_filter("VINOH 12", subscription))
+        self.assertFalse(subscription_matches_filter("RADSKA CESKY", subscription))
         self.assertFalse(subscription_matches_filter("rozhlas sport", subscription))
         self.assertFalse(subscription_matches_filter("private url", subscription))
 
@@ -210,6 +211,9 @@ class UiHelperTest(unittest.TestCase):
         unknown = SimpleNamespace(
             audio_description=False,
             audio_description_known=False,
+        )
+        self.assertTrue(
+            has_unknown_audio_description(SimpleNamespace(id="tv.ct1"), unknown)
         )
         self.assertTrue(
             has_unknown_audio_description(SimpleNamespace(id="centrum:1"), unknown)

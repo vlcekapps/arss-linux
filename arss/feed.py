@@ -10,14 +10,16 @@ from html import unescape
 import re
 import threading
 from types import TracebackType
-from typing import BinaryIO, Final
+from typing import TYPE_CHECKING, BinaryIO, Final
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from xml.parsers import expat
 
-import requests
-
 from . import __version__
 from .models import FeedArticle, ParsedFeed
+
+
+if TYPE_CHECKING:
+    import requests
 
 
 DEFAULT_CONNECT_TIMEOUT_SECONDS: Final = 15.0
@@ -131,12 +133,17 @@ class FeedClient:
         if not user_agent.strip() or not fallback_user_agent.strip():
             raise ValueError("user agents must not be blank")
 
+        import requests as requests_module
+
+        self._requests = requests_module
         self.connect_timeout_seconds = float(connect_timeout_seconds)
         self.read_timeout_seconds = float(read_timeout_seconds)
         self.maximum_response_bytes = maximum_response_bytes
         self.maximum_redirects = maximum_redirects
         self.user_agents = (user_agent.strip(), fallback_user_agent.strip())
-        self._session = session if session is not None else requests.Session()
+        self._session = (
+            session if session is not None else requests_module.Session()
+        )
         self._owns_session = session is None
         self._cancelled = threading.Event()
         self._response_lock = threading.RLock()
@@ -230,7 +237,7 @@ class FeedClient:
                     stream=True,
                     allow_redirects=False,
                 )
-            except requests.RequestException as error:
+            except self._requests.RequestException as error:
                 raise FeedNetworkError("Feed could not be downloaded") from error
 
             self._register_response(response)
@@ -280,7 +287,7 @@ class FeedClient:
                             output.extend(chunk)
                     except FeedError:
                         raise
-                    except requests.RequestException as error:
+                    except self._requests.RequestException as error:
                         raise FeedNetworkError("Feed response could not be read") from error
                     return bytes(output), current_url
             finally:

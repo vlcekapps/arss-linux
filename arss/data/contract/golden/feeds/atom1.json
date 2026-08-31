@@ -1,0 +1,28 @@
+{
+  "$schema": "../../schemas/normalized-feed.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceUrl": "https://example.test/feeds/atom.xml",
+  "title": "Obecný Atom",
+  "items": [
+    {
+      "title": "První & test",
+      "url": "https://example.test/article/one",
+      "sourceId": "urn:uuid:article-one",
+      "publishedText": "2026-07-22T11:15:00.987Z",
+      "publishedAtMillis": 1784718900987,
+      "mediaUrl": null,
+      "mediaType": null,
+      "durationText": null
+    },
+    {
+      "title": "",
+      "url": "https://example.test/article/two",
+      "sourceId": "urn:uuid:article-two",
+      "publishedText": "2026-07-21T10:00:00+01:00",
+      "publishedAtMillis": 1784624400000,
+      "mediaUrl": null,
+      "mediaType": null,
+      "durationText": null
+    }
+  ]
+}

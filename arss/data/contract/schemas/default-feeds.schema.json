@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vlcekapps/arss-contract/schemas/default-feeds.schema.json",
+  "title": "ARSS first-run RSS feeds",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "locales"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "1.0.0"},
+    "locales": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cs", "en"],
+      "properties": {"cs": {"$ref": "#/$defs/feedList"}, "en": {"$ref": "#/$defs/feedList"}}
+    }
+  },
+  "$defs": {
+    "feedList": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/feed"}},
+    "feed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "url", "format"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "title": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "format": {"enum": ["rss", "atom"]}
+      }
+    }
+  }
+}

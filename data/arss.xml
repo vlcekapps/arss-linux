@@ -42,6 +42,11 @@
     </developer>
     <content_rating type="oars-1.1"/>
     <releases>
+      <release version="1.7.0" date="2026-08-31" type="stable">
+        <description>
+          <p>Uses the verified cross-platform ARSS Contract for stable station IDs, a broader offline guide catalogue, safe legacy preference migration, and shared parser golden tests.</p>
+        </description>
+      </release>
       <release version="1.6.12" date="2026-08-11" type="stable">
         <description>
           <p>Removes bundled notification audio, delegates audible feedback to GNOME, and releases the clean Linux source under GPL-3.0-or-later.</p>

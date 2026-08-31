@@ -1,11 +1,11 @@
-%{!?arss_release:%global arss_release 2}
+%{!?arss_release:%global arss_release 1}
 
 Name:           arss
-Version:        1.6.12
+Version:        1.7.0
 Release:        %{arss_release}%{?dist}
 Summary:        Accessible GTK 4 feed, podcast, and programme reader
 
-License:        GPL-3.0-or-later AND CC0-1.0
+License:        GPL-3.0-or-later AND CC0-1.0 AND MIT
 URL:            https://github.com/vlcekapps/arss-linux
 Source0:        %{name}-%{version}.tar.gz
 
@@ -68,10 +68,18 @@ systemd-analyze verify redhat-linux-build/arss-monitor@.service data/arss-monito
 %{_userunitdir}/arss-monitor@.service
 %{_userunitdir}/arss-monitor@.timer
 %license %{_datadir}/licenses/arss-linux/LICENSE
+%license %{python3_sitelib}/arss/data/contract/LICENSE
+%license %{python3_sitelib}/arss/data/contract/THIRD_PARTY_NOTICES.md
 %doc %{_datadir}/doc/arss-linux/android-parity.md
+%doc %{_datadir}/doc/arss-linux/contract.md
 %doc %{_datadir}/doc/arss-linux/desktop-integration.md
 
 %changelog
+* Mon Aug 31 2026 Pavel Vlček <pavel@example.invalid> - 1.7.0-1
+- Consume the verified cross-platform ARSS Contract without a Git submodule
+- Use stable station IDs and migrate legacy provider-specific preferences
+- Expand the offline television and radio catalogue with golden parity tests
+
 * Tue Aug 11 2026 Pavel Vlček <pavel@example.invalid> - 1.6.12-2
 - Keep LICENSE canonical so repository hosts detect GNU GPL version 3
 - Retain the GPL-3.0-or-later choice in project and package metadata
