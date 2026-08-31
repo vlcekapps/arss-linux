@@ -45,6 +45,13 @@ def render_launcher_template(relative_path: str) -> str:
 
 
 class PackagingContractTest(unittest.TestCase):
+    def test_ci_targets_fedora_45_with_the_headless_gles_runtime(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "offline-tests.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("container: fedora:45", workflow)
+        self.assertIn("libglvnd-gles", workflow)
+
     def test_ci_handoff_contains_one_binary_rpm_and_its_sha_only(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "offline-tests.yml").read_text(
             encoding="utf-8"
