@@ -411,6 +411,61 @@ def is_native_list_item(node: Atspi.Accessible) -> bool:
     )
 
 
+def is_native_dropdown_display_proxy(node: Atspi.Accessible) -> bool:
+    """Recognize GtkDropDown's selected-item renderer, not a tab stop."""
+
+    # GTK's private GtkListItemWidget renderer is GENERIC/PANEL and inherits
+    # FOCUSABLE even though GtkDropDown.grab_focus() targets the toggle button.
+    # Keep this exception tied to that exact native ancestor chain.
+    if safe_role(node) is not Atspi.Role.PANEL or safe_name(node).strip():
+        return False
+    try:
+        states = node.get_state_set()
+        if (
+            not states.contains(Atspi.StateType.FOCUSABLE)
+            or not states.contains(Atspi.StateType.SHOWING)
+            or states.contains(Atspi.StateType.FOCUSED)
+        ):
+            return False
+        current = node.get_parent()
+    except GLib.Error:
+        return False
+
+    inside_toggle = False
+    for _depth in range(8):
+        if current is None:
+            return False
+        role = safe_role(current)
+        if role is Atspi.Role.TOGGLE_BUTTON:
+            inside_toggle = True
+        elif role is Atspi.Role.COMBO_BOX:
+            if not inside_toggle or not safe_name(current).strip():
+                return False
+            try:
+                owner_states = current.get_state_set()
+                has_selection = current.is_selection()
+                has_value = current.is_value()
+            except GLib.Error:
+                return False
+            return (
+                owner_states.contains(Atspi.StateType.FOCUSABLE)
+                and owner_states.contains(Atspi.StateType.SHOWING)
+                and owner_states.contains(Atspi.StateType.HAS_POPUP)
+                and (
+                    safe_action_count(current) > 0
+                    or has_selection
+                    or has_value
+                )
+            )
+        elif role in {Atspi.Role.FRAME, Atspi.Role.DIALOG}:
+            return False
+        try:
+            current = current.get_parent()
+        except GLib.Error:
+            return False
+    return False
+
+
 def inspect_focus_contract(application: Atspi.Accessible) -> None:
     """Reject silent wrapper stops and controls without an operable interface."""
 
@@ -451,6 +506,8 @@ def inspect_focus_contract(application: Atspi.Accessible) -> None:
             continue
         role = safe_role(node)
         name = safe_name(node).strip()
+        if is_native_dropdown_display_proxy(node):
+            continue
         if not name:
             failures.append((str(role), name, "missing name"))
             continue
