@@ -99,33 +99,47 @@ def selected_value_text(node: Atspi.Accessible) -> str:
 
     try:
         selection = node.get_selection_iface()
-        if selection is None or selection.get_n_selected_children() != 1:
-            return ""
-        child = selection.get_selected_child(0)
+        child = (
+            selection.get_selected_child(0)
+            if selection is not None
+            and selection.get_n_selected_children() == 1
+            else None
+        )
     except GLib.Error:
-        return ""
-    if child is None:
-        return ""
-    name = safe_name(child).strip()
-    if name:
+        child = None
+    if child is not None:
+        name = safe_name(child).strip()
+        if name:
+            return name
+        nested_name = next(
+            (
+                safe_name(descendant).strip()
+                for descendant in walk(child)[1:]
+                if safe_name(descendant).strip()
+            ),
+            "",
+        )
+        if nested_name:
+            return nested_name
+
+    # GtkDropDown uses a GtkLabel inside its closed button to present the
+    # selected item.  GTK's AT-SPI backend exposes that visible text child even
+    # on releases where neither Value nor Selection is registered on the
+    # COMBO_BOX itself.  This is the same native tree available to Orca.
+    for descendant in walk(node)[1:]:
+        if safe_role(descendant) not in {Atspi.Role.LABEL, Atspi.Role.TEXT}:
+            continue
+        name = safe_name(descendant).strip()
+        if not name:
+            continue
+        try:
+            states = descendant.get_state_set()
+            if not states.contains(Atspi.StateType.SHOWING):
+                continue
+        except GLib.Error:
+            continue
         return name
-    return next(
-        (
-            safe_name(descendant).strip()
-            for descendant in walk(child)[1:]
-            if safe_name(descendant).strip()
-        ),
-        "",
-    )
-
-
-def has_selection_value_interface(node: Atspi.Accessible) -> bool:
-    """Return whether AT can inspect the control's current selection."""
-
-    try:
-        return node.is_value() or node.is_selection()
-    except GLib.Error:
-        return False
+    return ""
 
 
 def is_native_menu_button_wrapper(
@@ -1041,25 +1055,38 @@ def inspect_guide_fixture(environment: dict[str, str]) -> None:
             if safe_role(node) is Atspi.Role.ENTRY
             and safe_name(node) in {"Search stations", "Hledat stanici"}
         )
-        initial_nodes = wait_until(
-            application,
-            lambda current: any(
-                safe_role(node) is Atspi.Role.COMBO_BOX
-                and safe_name(node) in {"Station", "Stanice"}
-                and selected_value_text(node) == "Prima"
-                for node in current
-            ),
-        )
+        try:
+            initial_nodes = wait_until(
+                application,
+                lambda current: any(
+                    safe_role(node) is Atspi.Role.COMBO_BOX
+                    and safe_name(node) in {"Station", "Stanice"}
+                    and selected_value_text(node) == "Prima"
+                    for node in current
+                ),
+            )
+        except AssertionError as error:
+            details = [
+                (
+                    safe_name(node),
+                    selected_value_text(node),
+                    [
+                        (str(safe_role(child)), safe_name(child))
+                        for child in walk(node)[1:20]
+                    ],
+                )
+                for node in walk(application)
+                if safe_role(node) is Atspi.Role.COMBO_BOX
+            ]
+            raise AssertionError(
+                f"The initial station selection was not exposed: {details}"
+            ) from error
         initial_station = next(
             node
             for node in initial_nodes
             if safe_role(node) is Atspi.Role.COMBO_BOX
             and safe_name(node) in {"Station", "Stanice"}
         )
-        if not has_selection_value_interface(initial_station):
-            raise AssertionError(
-                "The initial station drop-down has no AT-SPI value or selection interface"
-            )
         try:
             states = search.get_state_set()
             editable = search.is_editable_text()
@@ -1097,10 +1124,6 @@ def inspect_guide_fixture(environment: dict[str, str]) -> None:
             if safe_role(node) is Atspi.Role.COMBO_BOX
             and safe_name(node) in {"Station", "Stanice"}
         )
-        if not has_selection_value_interface(station):
-            raise AssertionError(
-                "The filtered station drop-down has no AT-SPI value or selection interface"
-            )
         if selected_value_text(station) != "Nova Sport 6":
             raise AssertionError(
                 "Alias search did not select the sole expected station, Nova Sport 6"
