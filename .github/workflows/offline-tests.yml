@@ -21,7 +21,7 @@ jobs:
           dnf --assumeyes install
           git rpm-build meson ninja-build
           python3 python3-devel python3-gobject python3-requests python3-setuptools
-          gtk4 libadwaita appstream desktop-file-utils
+          gtk4 libadwaita libglvnd-gles appstream desktop-file-utils
           at-spi2-core dbus-daemon xorg-x11-server-Xvfb
           systemd systemd-rpm-macros
           gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good
