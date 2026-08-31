@@ -1112,7 +1112,7 @@ def inspect_guide_fixture(environment: dict[str, str]) -> None:
             pass
         if not editable_interface.set_text_contents("sest"):
             raise AssertionError("AT-SPI could not edit the station search")
-        if text_interface.get_text(0, -1) != "sest":
+        if Atspi.Text.get_text(text_interface, 0, -1) != "sest":
             raise AssertionError("Station search did not expose its edited AT-SPI text")
         nodes = wait_until(
             application,
