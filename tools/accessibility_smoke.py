@@ -1103,7 +1103,13 @@ def inspect_guide_fixture(environment: dict[str, str]) -> None:
         text_interface = search.get_text_iface()
         if editable_interface is None or text_interface is None:
             raise AssertionError("Station search did not return its AT-SPI text interfaces")
-        search.grab_focus()
+        try:
+            search.grab_focus()
+        except GLib.Error:
+            # A bare Xvfb session has no window manager to arbitrate global
+            # focus.  The FOCUSABLE state above remains mandatory; the actual
+            # release gate is the AT-SPI EditableText mutation and read-back.
+            pass
         if not editable_interface.set_text_contents("sest"):
             raise AssertionError("AT-SPI could not edit the station search")
         if text_interface.get_text(0, -1) != "sest":
