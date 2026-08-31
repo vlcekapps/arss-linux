@@ -116,7 +116,7 @@ class DesktopServices:
     def __init__(self, checkpoints: CheckpointStore | None = None) -> None:
         Gst.init(None)
         self.feed_client = FeedClient()
-        self.rss_directory = RssDirectory(data_file("rss_directory.opml"))
+        self.rss_directory = RssDirectory()
         self.podcast_directory = PodcastDirectoryClient()
         self.guide = GuideRepository()
         self.monitor_feed_client = FeedClient()

@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/normalized-guide-program.schema.json",
+  "schemaVersion": "1.0.0",
+  "source": "sms.television-schedule",
+  "stationId": "tv.nova-sport-3",
+  "date": "2026-07-22",
+  "programs": [
+    {
+      "id": "sms:2140925363",
+      "startMillis": 1784757000000,
+      "endMillis": 1784758500000,
+      "title": "Noční pořad",
+      "description": "První & zajímavý popis",
+      "audioDescription": false,
+      "audioDescriptionKnown": false,
+      "programUrl": "https://m.tv.sms.cz/televize/Test/20260722/2140925363-Nocni-porad",
+      "archiveUrl": null
+    },
+    {
+      "id": "sms:2140925364",
+      "startMillis": 1784758500000,
+      "endMillis": null,
+      "title": "Ranní pořad",
+      "description": "Druhý popis",
+      "audioDescription": false,
+      "audioDescriptionKnown": false,
+      "programUrl": "https://m.tv.sms.cz/televize/Test/20260722/2140925364-Ranni-porad",
+      "archiveUrl": null
+    }
+  ]
+}

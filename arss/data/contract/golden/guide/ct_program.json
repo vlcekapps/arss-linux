@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/normalized-guide-program.schema.json",
+  "schemaVersion": "1.0.0",
+  "source": "ct.schedule",
+  "stationId": "tv.ct1",
+  "date": "2026-07-22",
+  "programs": [
+    {
+      "id": "ct:ct1:9579bd6ab201d280",
+      "startMillis": 1784757000000,
+      "endMillis": 1784758530000,
+      "title": "Noční dokument (2/4) – První část",
+      "description": "Popis pořadu.",
+      "audioDescription": true,
+      "audioDescriptionKnown": true,
+      "programUrl": "https://www.ceskatelevize.cz/porady/100/prvni/",
+      "archiveUrl": "https://www.ceskatelevize.cz/ivysilani/100/"
+    },
+    {
+      "id": "ct:ct1:20b3eddb341c48f9",
+      "startMillis": 1784758500000,
+      "endMillis": null,
+      "title": "Zprávy",
+      "description": "",
+      "audioDescription": false,
+      "audioDescriptionKnown": true,
+      "programUrl": "https://www.ceskatelevize.cz/porady/101/druhy/",
+      "archiveUrl": null
+    }
+  ]
+}

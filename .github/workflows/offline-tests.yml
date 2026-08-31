@@ -1,0 +1,78 @@
+name: Offline tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: fedora:43
+    env:
+      ARSS_RUN_LIVE_TESTS: "0"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Install test dependencies
+        run: >-
+          dnf --assumeyes install
+          git rpm-build meson ninja-build
+          python3 python3-devel python3-gobject python3-requests python3-setuptools
+          gtk4 libadwaita appstream desktop-file-utils
+          at-spi2-core dbus-daemon xorg-x11-server-Xvfb
+          systemd systemd-rpm-macros
+          gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good
+          gstreamer1-plugins-bad-free gstreamer1-plugins-ugly-free
+      - name: Check out ARSS Linux
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run deterministic unit and contract tests
+        run: python3 -B -m unittest discover -s tests -v
+      - name: Validate public contract snapshot with the consumer lock wrapper
+        run: python3 -B tools/validate_vendored_contract.py
+      - name: Validate AppStream catalog
+        run: python3 -B tools/validate_appstream_catalog.py
+      - name: Run GTK, large-text and AT-SPI smoke gates
+        timeout-minutes: 10
+        run: dbus-run-session -- bash ./tools/run-headless-smoke.sh
+      - name: Build the upgradeable Fedora RPM, SRPM and normalized source
+        run: ./tools/build-rpm.sh
+      - name: Stage the binary Fedora RPM and checksum only
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_directory="${GITHUB_WORKSPACE}/ci-artifacts/fedora-rpm"
+          if [[ -e "${artifact_directory}" ]]; then
+            echo "Refusing to reuse an existing artifact staging directory." >&2
+            exit 1
+          fi
+          mkdir -p -- "${artifact_directory}"
+          mapfile -d '' binary_rpms < <(
+            find "${GITHUB_WORKSPACE}/dist/rpm" -maxdepth 1 -type f \
+              -name 'arss-*.noarch.rpm' ! -name '*.src.rpm' -print0
+          )
+          if (( ${#binary_rpms[@]} != 1 )); then
+            printf 'Expected exactly one binary noarch RPM, found %d.\n' \
+              "${#binary_rpms[@]}" >&2
+            exit 1
+          fi
+          rpm -qp -- "${binary_rpms[0]}" >/dev/null
+          artifact_name="$(basename -- "${binary_rpms[0]}")"
+          install -m 0644 -- "${binary_rpms[0]}" \
+            "${artifact_directory}/${artifact_name}"
+          (
+            cd -- "${artifact_directory}"
+            sha256sum -- "${artifact_name}" > "${artifact_name}.sha256"
+          )
+      - name: Upload the binary Fedora RPM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arss-fedora-rpm
+          path: |
+            ci-artifacts/fedora-rpm/*.noarch.rpm
+            ci-artifacts/fedora-rpm/*.noarch.rpm.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

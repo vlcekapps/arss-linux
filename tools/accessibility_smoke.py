@@ -82,6 +82,31 @@ def safe_action_count(node: Atspi.Accessible) -> int:
         return 0
 
 
+def selected_child_name(node: Atspi.Accessible) -> str:
+    """Return the sole selected child's accessible name, or an empty string."""
+
+    try:
+        selection = node.get_selection_iface()
+        if selection is None or selection.get_n_selected_children() != 1:
+            return ""
+        child = selection.get_selected_child(0)
+    except GLib.Error:
+        return ""
+    if child is None:
+        return ""
+    name = safe_name(child).strip()
+    if name:
+        return name
+    return next(
+        (
+            safe_name(descendant).strip()
+            for descendant in walk(child)[1:]
+            if safe_name(descendant).strip()
+        ),
+        "",
+    )
+
+
 def is_native_menu_button_wrapper(
     node: Atspi.Accessible,
     name: str,
@@ -947,6 +972,125 @@ def inspect_invalid_form(application: Atspi.Accessible) -> None:
     if not statuses:
         raise AssertionError("Invalid input has no AT-visible textual explanation")
 
+
+def inspect_guide_fixture(environment: dict[str, str]) -> None:
+    """Exercise the guide search through the real AT-SPI text interface."""
+
+    process = subprocess.Popen(
+        [sys.executable, str(PROJECT / "tools" / "accessibility_fixture_app.py")],
+        cwd=PROJECT,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        application = None
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and process.poll() is None:
+            application = find_application()
+            if application is not None and any(
+                safe_role(node) is Atspi.Role.HEADING
+                and safe_name(node)
+                in {"Television and radio guide", "Televizní a rozhlasový program"}
+                for node in walk(application)
+            ):
+                break
+            application = None
+            time.sleep(0.1)
+        if process.poll() is not None:
+            output, error = process.communicate()
+            raise RuntimeError(
+                f"Guide accessibility fixture exited early ({process.returncode})\n{output}\n{error}"
+            )
+        if application is None:
+            raise RuntimeError("The guide accessibility fixture did not appear")
+        nodes = wait_until(
+            application,
+            lambda current: any(
+                safe_role(node) is Atspi.Role.ENTRY
+                and safe_name(node) in {"Search stations", "Hledat stanici"}
+                and node.get_state_set().contains(Atspi.StateType.SENSITIVE)
+                for node in current
+            ),
+        )
+        search = next(
+            node
+            for node in nodes
+            if safe_role(node) is Atspi.Role.ENTRY
+            and safe_name(node) in {"Search stations", "Hledat stanici"}
+        )
+        initial_nodes = wait_until(
+            application,
+            lambda current: any(
+                safe_role(node) is Atspi.Role.COMBO_BOX
+                and safe_name(node) in {"Station", "Stanice"}
+                and selected_child_name(node) == "Prima"
+                for node in current
+            ),
+        )
+        initial_station = next(
+            node
+            for node in initial_nodes
+            if safe_role(node) is Atspi.Role.COMBO_BOX
+            and safe_name(node) in {"Station", "Stanice"}
+        )
+        if not initial_station.is_selection():
+            raise AssertionError("The initial station drop-down has no AT-SPI selection interface")
+        try:
+            states = search.get_state_set()
+            editable = search.is_editable_text()
+            text_interface = search.is_text()
+        except GLib.Error as error:
+            raise AssertionError("Station search has no usable AT-SPI interfaces") from error
+        if not (
+            states.contains(Atspi.StateType.FOCUSABLE)
+            and editable
+            and text_interface
+        ):
+            raise AssertionError("Station search is not a focusable editable AT-SPI text control")
+        editable_interface = search.get_editable_text_iface()
+        text_interface = search.get_text_iface()
+        if editable_interface is None or text_interface is None:
+            raise AssertionError("Station search did not return its AT-SPI text interfaces")
+        search.grab_focus()
+        if not editable_interface.set_text_contents("sest"):
+            raise AssertionError("AT-SPI could not edit the station search")
+        if text_interface.get_text(0, -1) != "sest":
+            raise AssertionError("Station search did not expose its edited AT-SPI text")
+        nodes = wait_until(
+            application,
+            lambda current: any(
+                safe_role(node) is Atspi.Role.COMBO_BOX
+                and safe_name(node) in {"Station", "Stanice"}
+                and node.get_state_set().contains(Atspi.StateType.SENSITIVE)
+                and selected_child_name(node) == "Nova Sport 6"
+                for node in current
+            ),
+        )
+        station = next(
+            node
+            for node in nodes
+            if safe_role(node) is Atspi.Role.COMBO_BOX
+            and safe_name(node) in {"Station", "Stanice"}
+        )
+        if not station.is_selection():
+            raise AssertionError("The filtered station drop-down has no AT-SPI selection interface")
+        if selected_child_name(station) != "Nova Sport 6":
+            raise AssertionError(
+                "Alias search did not select the sole expected station, Nova Sport 6"
+            )
+        inspect_focus_contract(application)
+    finally:
+        process.terminate()
+        try:
+            _output, error = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            _output, error = process.communicate(timeout=5)
+        if error.strip():
+            print(error, file=sys.stderr)
+
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="arss-atspi-") as temporary:
         environment = os.environ.copy()
@@ -996,8 +1140,6 @@ def main() -> int:
             inspect_settings(application)
             inspect_invalid_form(application)
             inspect_focus_contract(application)
-            print("AT-SPI smoke test passed")
-            return 0
         finally:
             process.terminate()
             try:
@@ -1007,6 +1149,9 @@ def main() -> int:
                 _output, error = process.communicate(timeout=5)
             if error.strip():
                 print(error, file=sys.stderr)
+        inspect_guide_fixture(environment)
+        print("AT-SPI smoke test passed")
+        return 0
 
 
 if __name__ == "__main__":

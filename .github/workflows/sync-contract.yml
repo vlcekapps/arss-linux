@@ -1,0 +1,202 @@
+name: Sync ARSS contract
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-arss-contract
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      changed: ${{ steps.vendor.outputs.changed }}
+      commit: ${{ steps.vendor.outputs.commit }}
+      tag: ${{ steps.contract.outputs.tag }}
+    env:
+      CONTRACT_REPOSITORY: vlcekapps/arss-contract
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out ARSS Linux
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: linux
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select the newest semantic contract tag
+        id: contract
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tags_json="${RUNNER_TEMP}/arss-contract-tags.json"
+          gh api --paginate "repos/${CONTRACT_REPOSITORY}/tags" --slurp > "${tags_json}"
+          tag="$(
+          python3 - "${tags_json}" <<'PY'
+          import json
+          import re
+          import sys
+
+          pages = json.load(open(sys.argv[1], encoding="utf-8"))
+          versions = []
+          for page in pages:
+              for item in page:
+                  name = item.get("name", "")
+                  match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", name)
+                  if match:
+                      versions.append((tuple(map(int, match.groups())), name))
+          if not versions:
+              raise SystemExit("No immutable semantic ARSS contract tag exists.")
+          print(max(versions)[1])
+          PY
+          )"
+          printf 'tag=%s\n' "${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out the immutable contract release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: vlcekapps/arss-contract
+          ref: ${{ steps.contract.outputs.tag }}
+          path: contract
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the tag and vendor its complete manifest
+        id: vendor
+        shell: bash
+        working-directory: linux
+        env:
+          CONTRACT_TAG: ${{ steps.contract.outputs.tag }}
+        run: |
+          set -euo pipefail
+          contract_directory="${GITHUB_WORKSPACE}/contract"
+          actual_tag="$(git -C "${contract_directory}" describe --tags --exact-match)"
+          if [[ "${actual_tag}" != "${CONTRACT_TAG}" ]]; then
+            echo "Checked-out contract is not exactly ${CONTRACT_TAG}." >&2
+            exit 1
+          fi
+          contract_commit="$(git -C "${contract_directory}" rev-parse HEAD)"
+          python3 -B tools/sync-contract.py \
+            --source "${contract_directory}" \
+            --source-repository "https://github.com/${CONTRACT_REPOSITORY}" \
+            --source-tag "${CONTRACT_TAG}" \
+            --source-commit "${contract_commit}"
+          printf 'commit=%s\n' "${contract_commit}" >> "${GITHUB_OUTPUT}"
+          if git diff --quiet -- arss/data/contract; then
+            printf 'changed=false\n' >> "${GITHUB_OUTPUT}"
+          else
+            printf 'changed=true\n' >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Run offline contract and guide tests
+        if: steps.vendor.outputs.changed == 'true'
+        working-directory: linux
+        env:
+          ARSS_RUN_LIVE_TESTS: "0"
+        run: |
+          python3 -B -m unittest discover -s tests -p 'test_contract.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_contract_consumer.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_contract_parity.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_directory.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_guide.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_sync_contract.py' -v
+          python3 -B tools/validate_vendored_contract.py
+
+      - name: Hand off validated contract data only
+        if: steps.vendor.outputs.changed == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arss-contract-candidate
+          path: linux/arss/data/contract
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+
+  update:
+    needs: validate
+    if: needs.validate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      UPDATE_BRANCH: automation/sync-arss-contract
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out a clean ARSS Linux tree without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: linux
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download the data-only validated handoff
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: arss-contract-candidate
+          path: candidate-contract
+
+      - name: Install and revalidate the data-only handoff
+        shell: bash
+        working-directory: linux
+        env:
+          CONTRACT_TAG: ${{ needs.validate.outputs.tag }}
+          CONTRACT_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          set -euo pipefail
+          candidate_directory="${GITHUB_WORKSPACE}/candidate-contract"
+          destination_directory="${GITHUB_WORKSPACE}/linux/arss/data/contract"
+          test -f "${candidate_directory}/manifest.sha256"
+          rm -rf -- "${destination_directory}"
+          mv -- "${candidate_directory}" "${destination_directory}"
+          python3 -B tools/validate_vendored_contract.py
+          python3 -B - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          lock = json.loads(
+              Path("arss/data/contract/contract.lock.json").read_text(encoding="utf-8")
+          )
+          if lock.get("sourceTag") != os.environ["CONTRACT_TAG"]:
+              raise SystemExit("Candidate lock tag differs from the validated handoff.")
+          if lock.get("sourceCommit") != os.environ["CONTRACT_COMMIT"]:
+              raise SystemExit("Candidate lock commit differs from the validated handoff.")
+          PY
+
+      - name: Push the update branch and open or refresh a pull request
+        shell: bash
+        working-directory: linux
+        env:
+          CONTRACT_TAG: ${{ needs.validate.outputs.tag }}
+          CONTRACT_COMMIT: ${{ needs.validate.outputs.commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --force-create "${UPDATE_BRANCH}"
+          git add -f -- arss/data/contract
+          git commit -m "Sync ARSS contract ${CONTRACT_TAG}"
+          git push --force origin "HEAD:${UPDATE_BRANCH}"
+          body="$(printf 'Updates the vendored cross-platform contract to `%s` (`%s`).\n\nThe source manifest, lock, schemas and Linux parser goldens were verified before any tracked file changed. If the catalogue change is user-visible, bump the ARSS version and build the final Fedora RPM before merging.' "${CONTRACT_TAG}" "${CONTRACT_COMMIT}")"
+          number="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${UPDATE_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "${number}" ]]; then
+            gh pr edit "${number}" --repo "${GITHUB_REPOSITORY}" \
+              --title "Sync ARSS contract ${CONTRACT_TAG}" --body "${body}"
+          else
+            gh pr create --repo "${GITHUB_REPOSITORY}" --base main \
+              --head "${UPDATE_BRANCH}" --title "Sync ARSS contract ${CONTRACT_TAG}" \
+              --body "${body}"
+          fi

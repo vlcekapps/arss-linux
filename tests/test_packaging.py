@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -43,6 +45,63 @@ def render_launcher_template(relative_path: str) -> str:
 
 
 class PackagingContractTest(unittest.TestCase):
+    def test_ci_handoff_contains_one_binary_rpm_and_its_sha_only(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "offline-tests.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("-name 'arss-*.noarch.rpm' ! -name '*.src.rpm'", workflow)
+        self.assertIn('sha256sum -- "${artifact_name}"', workflow)
+        upload = workflow.split("- name: Upload the binary Fedora RPM", 1)[1]
+        self.assertIn("ci-artifacts/fedora-rpm/*.noarch.rpm", upload)
+        self.assertIn("ci-artifacts/fedora-rpm/*.noarch.rpm.sha256", upload)
+        self.assertNotIn("dist/rpm", upload)
+        self.assertNotIn("*.src.rpm", upload)
+
+    def test_vendored_contract_lock_and_licenses_are_packaged(self) -> None:
+        contract = ROOT / "arss" / "data" / "contract"
+        lock = json.loads(
+            (contract / "contract.lock.json").read_text(encoding="utf-8")
+        )
+        manifest = (contract / "manifest.sha256").read_bytes()
+        self.assertEqual(
+            "https://github.com/vlcekapps/arss-contract",
+            lock["sourceRepository"],
+        )
+        self.assertEqual(
+            f"v{lock['contractVersion']}",
+            lock["sourceTag"],
+        )
+        self.assertRegex(lock["sourceCommit"], r"^[0-9a-f]{40}$")
+        self.assertEqual(
+            hashlib.sha256(manifest).hexdigest(),
+            lock["manifestSha256"],
+        )
+
+        manifest_entries = {
+            relative: digest
+            for digest, relative in (
+                line.split("  ", 1)
+                for line in manifest.decode("ascii").splitlines()
+            )
+        }
+        for relative in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
+            with self.subTest(relative=relative):
+                payload = (contract / relative).read_bytes()
+                self.assertEqual(
+                    hashlib.sha256(payload).hexdigest(),
+                    manifest_entries[relative],
+                )
+
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        spec = (ROOT / "packaging" / "arss.spec").read_text(encoding="utf-8")
+        self.assertIn('"arss/data/contract/LICENSE"', pyproject)
+        self.assertIn(
+            '"arss/data/contract/THIRD_PARTY_NOTICES.md"',
+            pyproject,
+        )
+        self.assertIn("data/contract/LICENSE", spec)
+        self.assertIn("data/contract/THIRD_PARTY_NOTICES.md", spec)
+
     def test_release_versions_match(self) -> None:
         meson = (ROOT / "meson.build").read_text(encoding="utf-8")
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")

@@ -19,7 +19,7 @@ import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from arss.directory import DirectoryEntry  # noqa: E402
 from arss.guide import GuideMedium, GuideProgramEntry, GuideStation  # noqa: E402
@@ -64,16 +64,21 @@ SECOND_SUBSCRIPTION = FeedSubscription(
     "Second feed",
     "https://example.test/second.xml",
 )
-STATION = GuideStation("centrum:1", "ČT1", GuideMedium.TELEVISION)
+STATION = GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION)
 GUIDE_STATIONS = (
-    GuideStation("centrum:4", "Prima", GuideMedium.TELEVISION),
-    GuideStation("centrum:465", "Nova Sport 2", GuideMedium.TELEVISION),
-    GuideStation("sms:Nova Sport 6", "Nova Sport 6", GuideMedium.TELEVISION),
+    GuideStation("tv.prima", "Prima", GuideMedium.TELEVISION),
+    GuideStation("tv.nova-sport-2", "Nova Sport 2", GuideMedium.TELEVISION),
+    GuideStation(
+        "tv.nova-sport-6",
+        "Nova Sport 6",
+        GuideMedium.TELEVISION,
+        aliases=("Nova Sport šest",),
+    ),
     STATION,
-    GuideStation("centrum:3", "Nova", GuideMedium.TELEVISION),
+    GuideStation("tv.nova", "Nova", GuideMedium.TELEVISION),
 )
 RADIO_STATION = GuideStation(
-    "rozhlas:radiozurnal",
+    "radio.radiozurnal",
     "Radiožurnál",
     GuideMedium.RADIO,
 )
@@ -287,16 +292,10 @@ class SmokeApplication(Adw.Application):
             assert self.main_window is not None
             main = self.main_window
             station = main.guide_page.station
-            station_expression = station.get_expression()
-            assert station.get_enable_search()
-            assert station.get_tooltip_text() == (
-                "Open the list and press Shift+Tab to reach the search field."
-            )
-            assert station_expression is not None
-            assert station_expression.get_value_type() == GObject.TYPE_STRING
+            assert not station.get_enable_search()
             assert (
-                station.get_search_match_mode()
-                == Gtk.StringFilterMatchMode.PREFIX
+                main.guide_page.station_search.get_placeholder_text()
+                == "Station name or alias"
             )
             assert (
                 station.get_accessible_role()
@@ -463,11 +462,11 @@ class SmokeApplication(Adw.Application):
             guide = self.main_window.guide_page
             assert guide.station.get_sensitive()
             assert [station.id for station in guide.stations] == [
-                "centrum:1",
-                "centrum:3",
-                "centrum:465",
-                "sms:Nova Sport 6",
-                "centrum:4",
+                "tv.ct1",
+                "tv.nova",
+                "tv.nova-sport-2",
+                "tv.nova-sport-6",
+                "tv.prima",
             ]
             model = guide.station.get_model()
             assert model is not None
@@ -476,42 +475,11 @@ class SmokeApplication(Adw.Application):
                 for position in range(model.get_n_items())
             ] == ["ČT1", "Nova", "Nova Sport 2", "Nova Sport 6", "Prima"]
             selected = guide.station.get_selected()
-            assert guide.stations[selected].id == "sms:Nova Sport 6"
-
-            self.station_popover = next(
-                widget
-                for widget in widget_descendants(guide.station)
-                if isinstance(widget, Gtk.Popover)
-            )
-            self.station_popover.popup()
-            GLib.timeout_add(150, self.finish_station_popup)
-        except BaseException:
-            traceback.print_exc()
-            self._close_and_quit()
-        return GLib.SOURCE_REMOVE
-
-    def finish_station_popup(self) -> bool:
-        try:
-            assert self.main_window is not None
-            station = self.main_window.guide_page.station
-            descendants = widget_descendants(station)
-            search = next(
-                widget
-                for widget in descendants
-                if isinstance(widget, Gtk.SearchEntry)
-                and widget.get_mapped()
-            )
-            station_lists = [
-                widget
-                for widget in descendants
-                if isinstance(widget, Gtk.ListView)
-                and widget.get_mapped()
-            ]
-            assert len(station_lists) == 1
-            self.station_search = search
-            self.station_popup_list = station_lists[0]
-            search.set_text("Pr")
-            GLib.timeout_add(500, self.finish_station_search)
+            assert guide.stations[selected].id == "tv.nova-sport-6"
+            assert guide.station_search.get_sensitive()
+            guide.station_search.grab_focus()
+            guide.station_search.set_text("sest")
+            GLib.timeout_add(150, self.finish_station_search)
         except BaseException:
             traceback.print_exc()
             self._close_and_quit()
@@ -520,17 +488,16 @@ class SmokeApplication(Adw.Application):
     def finish_station_search(self) -> bool:
         try:
             assert self.main_window is not None
-            filtered = self.station_popup_list.get_model()
+            guide = self.main_window.guide_page
+            filtered = guide.station.get_model()
             assert filtered is not None
             filtered_names = [
                 filtered.get_item(position).get_string()
                 for position in range(filtered.get_n_items())
             ]
-            assert filtered_names == ["Prima"], filtered_names
-            self.station_search.set_text("")
+            assert filtered_names == ["Nova Sport 6"], filtered_names
+            guide.station_search.set_text("")
 
-            guide = self.main_window.guide_page
-            self.station_popover.popdown()
             existing = set(self.get_windows())
             guide._show(guide.show)
             opened = next(
@@ -539,10 +506,10 @@ class SmokeApplication(Adw.Application):
                 if window not in existing
                 and isinstance(window, ProgramWindow)
             )
-            assert opened.station.id == "sms:Nova Sport 6"
+            assert opened.station.id == "tv.nova-sport-6"
             assert (
                 self.main_window.state.get("guide_television_station_id")
-                == "sms:Nova Sport 6"
+                == "tv.nova-sport-6"
             )
             opened.close()
 

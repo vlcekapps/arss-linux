@@ -1,0 +1,18 @@
+{
+  "$schema": "../../schemas/normalized-guide.schema.json",
+  "schemaVersion": "1.0.0",
+  "stations": [
+    {
+      "id": "tv.ct1",
+      "medium": "television",
+      "displayName": "ČT1",
+      "sortOrder": 0
+    },
+    {
+      "id": "tv.nova",
+      "medium": "television",
+      "displayName": "Nova",
+      "sortOrder": 6
+    }
+  ]
+}

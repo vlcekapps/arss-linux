@@ -6,8 +6,8 @@ set -euo pipefail
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_directory="$(cd -- "${script_directory}/.." && pwd)"
 spec_file="${project_directory}/packaging/arss.spec"
-rpm_release="${ARSS_RPM_RELEASE:-2}"
-source_date_epoch="${SOURCE_DATE_EPOCH:-1786406400}"
+rpm_release="${ARSS_RPM_RELEASE:-1}"
+source_date_epoch="${SOURCE_DATE_EPOCH:-1788134400}"
 output_directory="${ARSS_RPM_OUTPUT:-${project_directory}/dist/rpm}"
 
 if [[ ! "${rpm_release}" =~ ^[1-9][0-9]*$ ]]; then

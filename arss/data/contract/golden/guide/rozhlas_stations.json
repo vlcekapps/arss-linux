@@ -1,0 +1,18 @@
+{
+  "$schema": "../../schemas/normalized-guide.schema.json",
+  "schemaVersion": "1.0.0",
+  "stations": [
+    {
+      "id": "radio.radiozurnal",
+      "medium": "radio",
+      "displayName": "Radiožurnál",
+      "sortOrder": 0
+    },
+    {
+      "id": "radio.dvojka",
+      "medium": "radio",
+      "displayName": "Dvojka",
+      "sortOrder": 1
+    }
+  ]
+}

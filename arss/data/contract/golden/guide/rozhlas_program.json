@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/normalized-guide-program.schema.json",
+  "schemaVersion": "1.0.0",
+  "source": "rozhlas.schedule",
+  "stationId": "radio.radiozurnal",
+  "date": "2026-07-22",
+  "programs": [
+    {
+      "id": "rozhlas:radiozurnal:21191380:1784671200000",
+      "startMillis": 1784671200000,
+      "endMillis": 1784671740000,
+      "title": "Zprávy",
+      "description": "Zpravodajství z Česka i ze světa.",
+      "audioDescription": false,
+      "audioDescriptionKnown": false,
+      "programUrl": "https://radiozurnal.rozhlas.cz/zpravy",
+      "archiveUrl": null
+    },
+    {
+      "id": "rozhlas:radiozurnal:21191383:1784671800000",
+      "startMillis": 1784671800000,
+      "endMillis": 1784673000000,
+      "title": "Dvacet minut Radiožurnálu",
+      "description": "Rozhovor.",
+      "audioDescription": false,
+      "audioDescriptionKnown": false,
+      "programUrl": "https://radiozurnal.rozhlas.cz/dvacet-minut",
+      "archiveUrl": "https://api.mujrozhlas.cz/show-redirect/5997743"
+    }
+  ]
+}

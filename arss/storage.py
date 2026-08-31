@@ -12,6 +12,7 @@ import tempfile
 import threading
 from typing import Final
 
+from .contract import load_embedded_contract
 from .feed import is_supported_web_url
 from .models import FeedSubscription
 from .opml import OpmlError, read_opml, write_opml
@@ -35,8 +36,8 @@ GUIDE_MEDIUM_RADIO: Final = "radio"
 SUPPORTED_GUIDE_MEDIA: Final = frozenset(
     {GUIDE_MEDIUM_TELEVISION, GUIDE_MEDIUM_RADIO}
 )
-DEFAULT_TELEVISION_STATION_ID: Final = "centrum:1"
-DEFAULT_RADIO_STATION_ID: Final = "rozhlas:radiozurnal"
+DEFAULT_TELEVISION_STATION_ID: Final = "tv.ct1"
+DEFAULT_RADIO_STATION_ID: Final = "radio.radiozurnal"
 
 CHECK_MANUALLY: Final = 0
 SUPPORTED_CHECK_INTERVAL_MINUTES: Final = (
@@ -72,30 +73,15 @@ DEFAULT_PREFERENCES: Final[dict[str, object]] = {
     "podcast_check_interval_minutes": CHECK_MANUALLY,
 }
 
-CZECH_INITIAL_FEEDS: Final = (
-    FeedSubscription("iDNES.cz", "https://servis.idnes.cz/rss.aspx?c=zpravodaj"),
-    FeedSubscription("TN.cz", "https://tn.nova.cz/feed/atom/tnnova-2"),
-    FeedSubscription(
-        "Novinky.cz",
-        "https://api-web.novinky.cz/v1/timelines/62baab43a1bac57b7436dc07?xml=rss",
-    ),
-    FeedSubscription("iROZHLAS", "https://www.irozhlas.cz/rss/irozhlas"),
-    FeedSubscription(
-        "ČeskéNoviny.cz", "https://www.ceskenoviny.cz/sluzby/rss/zpravy.php"
-    ),
-)
+def _contract_initial_feeds(locale_code: str) -> tuple[FeedSubscription, ...]:
+    return tuple(
+        FeedSubscription(feed.title, feed.url)
+        for feed in load_embedded_contract().default_feeds_by_locale[locale_code]
+    )
 
-ENGLISH_INITIAL_FEEDS: Final = (
-    FeedSubscription(
-        "Project Gutenberg", "https://www.gutenberg.org/cache/epub/feeds/today.rss"
-    ),
-    FeedSubscription("BBC News World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
-    FeedSubscription(
-        "The Guardian World", "https://www.theguardian.com/world/rss"
-    ),
-    FeedSubscription("ScienceDaily", "https://www.sciencedaily.com/rss/all.xml"),
-    FeedSubscription("The Verge", "https://www.theverge.com/rss/index.xml"),
-)
+
+CZECH_INITIAL_FEEDS: Final = _contract_initial_feeds(LANGUAGE_CZECH)
+ENGLISH_INITIAL_FEEDS: Final = _contract_initial_feeds(LANGUAGE_ENGLISH)
 
 _STORAGE_LOCK = threading.RLock()
 

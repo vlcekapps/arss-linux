@@ -1,0 +1,26 @@
+{
+  "3": [
+    {
+      "id":"9001",
+      "start":"2026-07-22T18:00:00.000Z",
+      "stop":"2026-07-22T18:30:00.000Z",
+      "title":"Večerní zprávy",
+      "description":"Souhrn dne",
+      "durationMin":30,
+      "genre":9,
+      "slug":"vecerni-zpravy-9001",
+      "channelId":"3"
+    },
+    {
+      "id":"9002",
+      "start":"2026-07-22T18:30:00Z",
+      "stop":"2026-07-22T19:15:00Z",
+      "title":"Film & zábava",
+      "description":"",
+      "durationMin":45,
+      "genre":null,
+      "slug":"film-zabava-9002",
+      "channelId":"3"
+    }
+  ]
+}

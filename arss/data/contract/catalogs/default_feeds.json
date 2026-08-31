@@ -1,0 +1,70 @@
+{
+  "$schema": "../schemas/default-feeds.schema.json",
+  "schemaVersion": "1.0.0",
+  "locales": {
+    "cs": [
+      {
+        "id": "idnes-zpravy",
+        "title": "iDNES.cz",
+        "url": "https://servis.idnes.cz/rss.aspx?c=zpravodaj",
+        "format": "rss"
+      },
+      {
+        "id": "tn-cz",
+        "title": "TN.cz",
+        "url": "https://tn.nova.cz/feed/atom/tnnova-2",
+        "format": "atom"
+      },
+      {
+        "id": "novinky-cz",
+        "title": "Novinky.cz",
+        "url": "https://api-web.novinky.cz/v1/timelines/62baab43a1bac57b7436dc07?xml=rss",
+        "format": "rss"
+      },
+      {
+        "id": "irozhlas",
+        "title": "iROZHLAS",
+        "url": "https://www.irozhlas.cz/rss/irozhlas",
+        "format": "rss"
+      },
+      {
+        "id": "ceskenoviny-zpravy",
+        "title": "ČeskéNoviny.cz",
+        "url": "https://www.ceskenoviny.cz/sluzby/rss/zpravy.php",
+        "format": "rss"
+      }
+    ],
+    "en": [
+      {
+        "id": "project-gutenberg-today",
+        "title": "Project Gutenberg",
+        "url": "https://www.gutenberg.org/cache/epub/feeds/today.rss",
+        "format": "rss"
+      },
+      {
+        "id": "bbc-news-world",
+        "title": "BBC News World",
+        "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "format": "rss"
+      },
+      {
+        "id": "guardian-world",
+        "title": "The Guardian World",
+        "url": "https://www.theguardian.com/world/rss",
+        "format": "rss"
+      },
+      {
+        "id": "science-daily",
+        "title": "ScienceDaily",
+        "url": "https://www.sciencedaily.com/rss/all.xml",
+        "format": "rss"
+      },
+      {
+        "id": "the-verge",
+        "title": "The Verge",
+        "url": "https://www.theverge.com/rss/index.xml",
+        "format": "rss"
+      }
+    ]
+  }
+}
