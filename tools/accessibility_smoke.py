@@ -442,7 +442,9 @@ def inspect_focus_contract(application: Atspi.Accessible) -> None:
     for node in walk(application):
         try:
             states = node.get_state_set()
-            if not states.contains(Atspi.StateType.FOCUSABLE):
+            if not states.contains(
+                Atspi.StateType.FOCUSABLE
+            ) or not states.contains(Atspi.StateType.SHOWING):
                 continue
             has_popup = states.contains(Atspi.StateType.HAS_POPUP)
         except GLib.Error:
