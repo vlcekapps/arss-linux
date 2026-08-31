@@ -417,7 +417,11 @@ def is_native_dropdown_display_proxy(node: Atspi.Accessible) -> bool:
     # GTK's private GtkListItemWidget renderer is GENERIC/PANEL and inherits
     # FOCUSABLE even though GtkDropDown.grab_focus() targets the toggle button.
     # Keep this exception tied to that exact native ancestor chain.
-    if safe_role(node) is not Atspi.Role.PANEL or safe_name(node).strip():
+    if (
+        safe_role(node) is not Atspi.Role.PANEL
+        or safe_name(node).strip()
+        or safe_action_count(node) != 1
+    ):
         return False
     try:
         states = node.get_state_set()
@@ -431,33 +435,58 @@ def is_native_dropdown_display_proxy(node: Atspi.Accessible) -> bool:
     except GLib.Error:
         return False
 
-    inside_toggle = False
+    display_children = children(node)
+    if (
+        len(display_children) != 1
+        or safe_role(display_children[0]) is not Atspi.Role.PANEL
+        or safe_name(display_children[0]).strip()
+    ):
+        return False
+
+    toggle_name = ""
     for _depth in range(8):
         if current is None:
             return False
         role = safe_role(current)
-        if role is Atspi.Role.TOGGLE_BUTTON:
-            inside_toggle = True
+        name = safe_name(current).strip()
+        if role is Atspi.Role.PANEL:
+            if toggle_name or name:
+                return False
+            try:
+                panel_states = current.get_state_set()
+                if (
+                    panel_states.contains(Atspi.StateType.FOCUSABLE)
+                    or not panel_states.contains(Atspi.StateType.SHOWING)
+                ):
+                    return False
+            except GLib.Error:
+                return False
+        elif role is Atspi.Role.TOGGLE_BUTTON:
+            if toggle_name or not name or safe_action_count(current) < 1:
+                return False
+            try:
+                toggle_states = current.get_state_set()
+                if not (
+                    toggle_states.contains(Atspi.StateType.FOCUSABLE)
+                    and toggle_states.contains(Atspi.StateType.SHOWING)
+                ):
+                    return False
+            except GLib.Error:
+                return False
+            toggle_name = name
         elif role is Atspi.Role.COMBO_BOX:
-            if not inside_toggle or not safe_name(current).strip():
+            if not toggle_name or name != toggle_name:
                 return False
             try:
                 owner_states = current.get_state_set()
-                has_selection = current.is_selection()
-                has_value = current.is_value()
             except GLib.Error:
                 return False
             return (
-                owner_states.contains(Atspi.StateType.FOCUSABLE)
-                and owner_states.contains(Atspi.StateType.SHOWING)
+                owner_states.contains(Atspi.StateType.SHOWING)
                 and owner_states.contains(Atspi.StateType.HAS_POPUP)
-                and (
-                    safe_action_count(current) > 0
-                    or has_selection
-                    or has_value
-                )
+                and bool(selected_value_text(current))
             )
-        elif role in {Atspi.Role.FRAME, Atspi.Role.DIALOG}:
+        else:
             return False
         try:
             current = current.get_parent()
