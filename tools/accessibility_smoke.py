@@ -466,6 +466,54 @@ def is_native_dropdown_display_proxy(node: Atspi.Accessible) -> bool:
     return False
 
 
+def focus_node_diagnostics(node: Atspi.Accessible) -> dict[str, object]:
+    """Describe a rejected focus node without relying on toolkit internals."""
+
+    ancestry: list[dict[str, object]] = []
+    current: Atspi.Accessible | None = node
+    for _depth in range(10):
+        if current is None:
+            break
+        try:
+            states = current.get_state_set()
+            state_flags = {
+                name: states.contains(state)
+                for name, state in {
+                    "focusable": Atspi.StateType.FOCUSABLE,
+                    "focused": Atspi.StateType.FOCUSED,
+                    "showing": Atspi.StateType.SHOWING,
+                    "visible": Atspi.StateType.VISIBLE,
+                    "sensitive": Atspi.StateType.SENSITIVE,
+                    "has_popup": Atspi.StateType.HAS_POPUP,
+                }.items()
+            }
+            interfaces = {
+                "actions": safe_action_count(current),
+                "selection": current.is_selection(),
+                "value": current.is_value(),
+                "text": current.is_text(),
+            }
+            parent = current.get_parent()
+        except GLib.Error:
+            break
+        ancestry.append(
+            {
+                "role": str(safe_role(current)),
+                "name": safe_name(current),
+                "states": state_flags,
+                "interfaces": interfaces,
+            }
+        )
+        current = parent
+    return {
+        "ancestry": ancestry,
+        "children": [
+            (str(safe_role(child)), safe_name(child))
+            for child in children(node)
+        ],
+    }
+
+
 def inspect_focus_contract(application: Atspi.Accessible) -> None:
     """Reject silent wrapper stops and controls without an operable interface."""
 
@@ -563,7 +611,27 @@ def inspect_focus_contract(application: Atspi.Accessible) -> None:
         if not operable:
             failures.append((str(role), name, "no action/value/text interface"))
     if failures:
-        raise AssertionError(f"Invalid keyboard focus stops: {failures}")
+        rejected_nodes: list[dict[str, object]] = []
+        for node in walk(application):
+            if (
+                safe_role(node) is not Atspi.Role.PANEL
+                or safe_name(node).strip()
+            ):
+                continue
+            try:
+                states = node.get_state_set()
+                if not (
+                    states.contains(Atspi.StateType.FOCUSABLE)
+                    and states.contains(Atspi.StateType.SHOWING)
+                ):
+                    continue
+            except GLib.Error:
+                continue
+            rejected_nodes.append(focus_node_diagnostics(node))
+        raise AssertionError(
+            f"Invalid keyboard focus stops: {failures}; "
+            f"unnamed panel diagnostics: {rejected_nodes}"
+        )
 
 
 def inspect_settings(application: Atspi.Accessible) -> None:
