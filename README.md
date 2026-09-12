@@ -21,6 +21,26 @@ Bez výslovného zapnutí běží automatické kontroly pouze po dobu otevřené
 aplikace. Volitelné kontroly po jejím ukončení používají uživatelské systemd
 timery popsané níže; instalace balíčku je sama nikdy nezapne.
 
+## Všechny články a epizody
+
+Od dvou přidaných RSS kanálů se na začátku seznamu objeví položka **Vše**.
+Totéž platí nezávisle pro dva a více podcastů. Otevře nejnovější položky,
+které právě poskytují všechny přidané feedy (nejde o archiv starších položek).
+Každý řádek uvádí název, zdroj a datum; chybějící datum je výslovně označeno.
+To platí i při vypnutém zobrazování dat v jednotlivých kanálech.
+
+V okně Vše je ovladač řazení: výchozí datum od nejnovějších, nebo abecední
+skupiny podle zdroje a uvnitř nich opět nejnovější položky. Nastavení se ukládá
+zvlášť pro RSS a podcasty. Změna řazení znovu nestahuje feedy, nezahájí
+přehrávání a nepřesune fokus z ovladače řazení. Články se otevírají v prohlížeči,
+epizody v interním přehrávači s původním názvem podcastu.
+
+Vše je pouze pohled, nikdy se neexportuje do OPML, nenabízí přejmenování ani
+smazání a nezavádí další automatické kontroly. Filtr seznamu jej zobrazí při
+prázdném dotazu nebo při shodě s názvem Vše/All; vždy obsahuje všechny zdroje,
+nikoli pouze zdroje odpovídající filtru. Selhání některého feedu nepřekryje
+úspěšné výsledky: stav vypíše nedostupné zdroje a nabídne nové načtení.
+
 ## Spuštění na Fedoře
 
 Na Fedoře nainstalujte runtime prostředí z distribuce. GTK, libadwaita,

@@ -1,6 +1,6 @@
 project(
   'arss-linux',
-  version: '1.7.0',
+  version: '1.8.0',
   meson_version: '>=1.2.0',
 )
 
@@ -67,6 +67,7 @@ python.install_sources(
     'arss/__init__.py',
     'arss/__main__.py',
     'arss/application.py',
+    'arss/aggregate.py',
     'arss/audio_session.py',
     'arss/background.py',
     'arss/checkpoints.py',
@@ -163,6 +164,7 @@ install_data(
 )
 install_data(
   'docs/android-parity.md',
+  'docs/all-feeds.md',
   'docs/contract.md',
   'docs/desktop-integration.md',
   install_dir: join_paths(get_option('datadir'), 'doc', 'arss-linux'),

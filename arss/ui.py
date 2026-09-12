@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import date as Date
 import locale as system_locale
 from pathlib import Path
+import threading
 import time
 from typing import Any, Protocol, TypeVar
 from urllib.parse import urlsplit
@@ -24,6 +25,15 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 
 from . import __version__
+from .aggregate import (
+    AggregateResult,
+    SORT_VALUES,
+    SourcedArticle,
+    load_all,
+    offers_all,
+    order_all,
+    sort_preference_key,
+)
 from .directory import podcast_search_locale, search_text_matches
 from .guide import (
     GuideMedium,
@@ -631,14 +641,25 @@ class SubscriptionPage(Gtk.Box):
             )
             return
         visible = self._visible_items()
+        show_all = offers_all(len(self.items)) and search_text_matches(
+            self.filter_entry.get_text(), self.window.t("all_feeds")
+        )
         default_url = self.window.state.get("default_feed_url") if self.kind == "rss" else None
         empty_key = "empty_rss" if self.kind == "rss" else "empty_podcasts"
-        self.list_scroll.set_visible(bool(visible))
-        self.empty.set_status(self.window.t(empty_key) if not visible else "", announce=not visible)
+        self.list_scroll.set_visible(bool(visible) or show_all)
+        self.empty.set_status(self.window.t(empty_key) if not visible and not show_all else "", announce=not visible and not show_all)
+        if show_all:
+            append_list_item(
+                self.list_box,
+                PresentationLabel(label=self.window.t("all_feeds"), xalign=0, wrap=True),
+                label=self.window.t("all_feeds"),
+                description=self.window.t("all_feeds_hint"),
+                callback=self._open_all,
+            )
         for index, subscription in enumerate(visible):
             self._row(subscription, default_url)
             if focus_url == subscription.url:
-                focus_list_item_later(self.list_box, index)
+                focus_list_item_later(self.list_box, index + int(show_all))
 
     def _visible_items(
         self,
@@ -714,6 +735,17 @@ class SubscriptionPage(Gtk.Box):
 
     def _open(self, subscription: FeedSubscription) -> None:
         ItemsWindow(self.window, self.kind, subscription).present()
+
+    def _open_all(self) -> None:
+        # No fake subscription/URL: All never reaches OPML or monitoring.
+        child = ItemsWindow(self.window, self.kind, None)
+        child.connect("close-request", self._all_closed)
+        child.present()
+
+    def _all_closed(self, *_args: object) -> bool:
+        if offers_all(len(self.items)):
+            focus_list_item_later(self.list_box, 0)
+        return False
 
     def _open_default(self, _button: Gtk.Button) -> None:
         url = self.window.state.get("default_feed_url")
@@ -982,13 +1014,18 @@ class RenameWindow(FormWindow):
 
 
 class ItemsWindow(FormWindow):
-    def __init__(self, parent: MainWindow, kind: str, subscription: FeedSubscription) -> None:
+    def __init__(self, parent: MainWindow, kind: str, subscription: FeedSubscription | None) -> None:
         title = parent.t("articles" if kind == "rss" else "episodes")
         super().__init__(parent, title, parent.t("back"), width=840, height=700)
         self.parent_window = parent
         self.kind = kind
         self.subscription = subscription
-        self.title_label = heading(subscription.title)
+        self.source_title = subscription.title if subscription is not None else parent.t("all_feeds")
+        self._cancelled = threading.Event()
+        self._aggregate: AggregateResult | None = None
+        self._displayed: tuple[SourcedArticle, ...] = ()
+        self._sort_updating = False
+        self.title_label = heading(self.source_title)
         self.content.append(self.title_label)
         self.busy = BusyBlock()
         self.content.append(self.busy)
@@ -998,7 +1035,20 @@ class ItemsWindow(FormWindow):
         scroll = scrolled_content(self.list_box)
         scroll.set_vexpand(True)
         self.content.append(scroll)
+        self.retry = wrapping_button(parent.t("retry"))
+        self.retry.connect("clicked", lambda _button: self.load())
+        self.retry.set_visible(False)
+        self.content.append(self.retry)
+        if subscription is None:
+            self.sort = Gtk.DropDown(model=Gtk.StringList.new([
+                parent.t("sort_date"), parent.t("sort_source"),
+            ]))
+            stored = parent.state.get(sort_preference_key(kind), "date")
+            self.sort.set_selected(SORT_VALUES.index(stored) if stored in SORT_VALUES else 0)
+            self.sort.connect("notify::selected", self._sort_changed)
+            self.content.append(labelled(parent.t("all_sort_mnemonic"), self.sort))
         self.connect("map", self._start_once)
+        self.connect("close-request", self._closing)
         self._started = False
 
     def _start_once(self, *_args: object) -> None:
@@ -1011,6 +1061,22 @@ class ItemsWindow(FormWindow):
         self.busy.start(self.parent_window.t("loading"))
         self.status.set_status("")
         clear_list(self.list_box)
+        self.retry.set_visible(False)
+        if self.subscription is None:
+            self._aggregate = None
+            self._displayed = ()
+            try:
+                sources = tuple(self.parent_window.state.subscriptions(self.kind))
+            except Exception as error:
+                self._failed(error)
+                return
+            self.parent_window.run_async(
+                lambda: load_all(sources, self.parent_window.services.fetch_feed,
+                                 self.kind, cancelled=self._cancelled.is_set),
+                self._all_loaded,
+                self._failed,
+            )
+            return
         self.parent_window.run_async(
             lambda: self.parent_window.services.fetch_feed(self.subscription.url),
             self._loaded,
@@ -1018,6 +1084,9 @@ class ItemsWindow(FormWindow):
         )
 
     def _loaded(self, feed: ParsedFeed) -> None:
+        if self._cancelled.is_set():
+            return
+        assert self.subscription is not None
         self.busy.stop()
         record_manual_checkpoint(
             self.parent_window.services,
@@ -1046,19 +1115,88 @@ class ItemsWindow(FormWindow):
         focus_list_item_later(self.list_box, 0)
 
     def _failed(self, error: BaseException) -> None:
+        if self._cancelled.is_set():
+            return
         self.busy.stop()
         self.status.set_status(self.parent_window.t("load_error", detail=str(error)))
-        retry = wrapping_button(self.parent_window.t("retry"))
-        retry.connect("clicked", lambda _button: (retry.set_visible(False), self.load()))
-        self.content.append(retry)
+        self.retry.set_visible(True)
 
-    def _append_item(self, item: FeedArticle, show_dates: bool) -> None:
+    def _all_loaded(self, result: AggregateResult) -> None:
+        if self._cancelled.is_set():
+            return
+        self.busy.stop()
+        self._aggregate = result
+        for source, feed in result.loaded:
+            record_manual_checkpoint(self.parent_window.services, self.kind, source.url, feed.articles)
+        self._render_all(initial_focus=True)
+
+    def _render_all(self, *, initial_focus: bool = False) -> None:
+        if self._aggregate is None:
+            return
+        result = self._aggregate
+        selected = self.list_box.get_model().get_selected()
+        selected_identity = self._displayed[selected].identity if selected < len(self._displayed) else None
+        self._displayed = order_all(
+            result.items,
+            str(self.parent_window.state.get(sort_preference_key(self.kind), "date")),
+            self.parent_window.t.language,
+        )
+        clear_list(self.list_box)
+        count_key = "articles_count" if self.kind == "rss" else "episodes_count"
+        title = self.parent_window.t(count_key, title=self.source_title, count=len(self._displayed))
+        self.title_label.set_text(title)
+        self.list_box.update_property([Gtk.AccessibleProperty.LABEL], [title])
+        for entry in self._displayed:
+            self._append_item(entry.article, True, source=entry.source)
+        status = ""
+        if result.failed:
+            status = self.parent_window.t(
+                "all_partial" if result.loaded else "all_failed",
+                loaded=len(result.loaded), failed=len(result.failed),
+                sources=", ".join(source.title for source in result.failed),
+            )
+        elif not self._displayed:
+            status = self.parent_window.t("empty_articles" if self.kind == "rss" else "empty_episodes")
+        self.status.set_status(status)
+        self.retry.set_visible(bool(result.failed))
+        if self._displayed:
+            position = next((i for i, entry in enumerate(self._displayed)
+                             if entry.identity == selected_identity), 0)
+            self.list_box.get_model().set_selected(position)
+            if initial_focus:
+                focus_list_item_later(self.list_box, position)
+
+    def _sort_changed(self, dropdown: Gtk.DropDown, *_args: object) -> None:
+        if self._sort_updating:
+            return
+        key = sort_preference_key(self.kind)
+        try:
+            self.parent_window.state.set(key, SORT_VALUES[min(dropdown.get_selected(), 1)])
+        except Exception:
+            self._sort_updating = True
+            previous = self.parent_window.state.get(key, "date")
+            dropdown.set_selected(SORT_VALUES.index(previous) if previous in SORT_VALUES else 0)
+            self._sort_updating = False
+            alert(self, self.parent_window.t("error"), self.parent_window.t("save_error"))
+            return
+        # Keep the dropdown focused; reorder from memory without another fetch.
+        self._render_all()
+
+    def _closing(self, *_args: object) -> bool:
+        self._cancelled.set()
+        return False
+
+    def _append_item(self, item: FeedArticle, show_dates: bool, *, source: FeedSubscription | None = None) -> None:
         shown_title = feed_item_title(item, self.kind, self.parent_window.t)
+        shown_date = item.published_text if show_dates else None
+        if source is not None:
+            shown_date = item.published_text or self.parent_window.t("unknown_date")
         if self.kind == "podcast":
             details = [
                 value
                 for value in (
-                    item.published_text if show_dates else None,
+                    source.title if source is not None else None,
+                    shown_date,
                     item.duration_text,
                 )
                 if value
@@ -1068,7 +1206,7 @@ class ItemsWindow(FormWindow):
             hint = self.parent_window.t("episode_open_hint")
             callback = lambda: self.parent_window.open_player(
                 item,
-                self.subscription.title,
+                source.title if source is not None else self.source_title,
             )
         else:
             line = Adw.WrapBox(
@@ -1077,8 +1215,10 @@ class ItemsWindow(FormWindow):
                 wrap_policy=Adw.WrapPolicy.NATURAL,
             )
             line.set_focusable(False)
-            shown_date = item.published_text if show_dates else None
-            label = shown_title + (f"\n{shown_date}" if shown_date else "")
+            if source is not None:
+                label = f"{shown_title}\n{source.title} — {shown_date}"
+            else:
+                label = shown_title + (f"\n{shown_date}" if shown_date else "")
             content = PresentationLabel(
                 label=label,
                 xalign=0,

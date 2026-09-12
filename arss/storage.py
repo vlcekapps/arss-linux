@@ -71,6 +71,8 @@ DEFAULT_PREFERENCES: Final[dict[str, object]] = {
     "background_checks_enabled": False,
     "rss_check_interval_minutes": CHECK_MANUALLY,
     "podcast_check_interval_minutes": CHECK_MANUALLY,
+    "rss_all_sort": "date",
+    "podcast_all_sort": "date",
 }
 
 def _contract_initial_feeds(locale_code: str) -> tuple[FeedSubscription, ...]:
@@ -554,6 +556,10 @@ def _validate_preference(key: str, value: object) -> None:
     if key == "language":
         if not isinstance(value, str) or value not in SUPPORTED_LANGUAGES:
             raise PreferencesError("language is unsupported")
+        return
+    if key in {"rss_all_sort", "podcast_all_sort"}:
+        if not isinstance(value, str) or value not in {"date", "source"}:
+            raise PreferencesError(f"{key} is unsupported")
         return
     if key == "guide_medium":
         if not isinstance(value, str) or value not in SUPPORTED_GUIDE_MEDIA:

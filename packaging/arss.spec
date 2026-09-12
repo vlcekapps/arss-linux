@@ -1,7 +1,7 @@
 %{!?arss_release:%global arss_release 1}
 
 Name:           arss
-Version:        1.7.0
+Version:        1.8.0
 Release:        %{arss_release}%{?dist}
 Summary:        Accessible GTK 4 feed, podcast, and programme reader
 
@@ -71,10 +71,16 @@ systemd-analyze verify redhat-linux-build/arss-monitor@.service data/arss-monito
 %license %{python3_sitelib}/arss/data/contract/LICENSE
 %license %{python3_sitelib}/arss/data/contract/THIRD_PARTY_NOTICES.md
 %doc %{_datadir}/doc/arss-linux/android-parity.md
+%doc %{_datadir}/doc/arss-linux/all-feeds.md
 %doc %{_datadir}/doc/arss-linux/contract.md
 %doc %{_datadir}/doc/arss-linux/desktop-integration.md
 
 %changelog
+* Sat Sep 12 2026 Pavel Vlček <pavel@example.invalid> - 1.8.0-1
+- Add virtual All views from two RSS feeds or podcasts with source-aware rows
+- Persist separate date/source sort choices and retain successful feed loads
+- Keep original subscription, OPML, notification and podcast identities
+
 * Mon Aug 31 2026 Pavel Vlček <pavel@example.invalid> - 1.7.0-1
 - Consume the verified cross-platform ARSS Contract without a Git submodule
 - Use stable station IDs and migrate legacy provider-specific preferences

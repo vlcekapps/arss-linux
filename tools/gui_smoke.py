@@ -11,6 +11,7 @@ import sys
 import threading
 from types import SimpleNamespace
 import traceback
+from unittest.mock import patch
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
@@ -22,6 +23,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from arss.directory import DirectoryEntry  # noqa: E402
+from arss.aggregate import AggregateResult, SourcedArticle, load_all  # noqa: E402
 from arss.guide import GuideMedium, GuideProgramEntry, GuideStation  # noqa: E402
 from arss.gtk_helpers import (  # noqa: E402
     list_item_child,
@@ -340,10 +342,15 @@ class SmokeApplication(Adw.Application):
 
             source_list = main.rss_page.list_box
             assert source_list.get_tab_behavior() == Gtk.ListTabBehavior.ITEM
-            first_source_content = list_item_child(source_list, 0)
-            second_source_content = list_item_child(source_list, 1)
-            first_source = list_item_focus_widget(source_list, 0)
-            second_source = list_item_focus_widget(source_list, 1)
+            all_content = list_item_child(source_list, 0)
+            assert isinstance(all_content, Gtk.Label)
+            assert all_content.get_text() == "All"
+            assert source_list._arss_metadata[all_content][0] == "All"
+            assert not widget_descendants(all_content)  # no edit/delete menu
+            first_source_content = list_item_child(source_list, 1)
+            second_source_content = list_item_child(source_list, 2)
+            first_source = list_item_focus_widget(source_list, 1)
+            second_source = list_item_focus_widget(source_list, 2)
             assert isinstance(first_source_content, Adw.WrapBox)
             assert isinstance(second_source_content, Adw.WrapBox)
             assert first_source is not None
@@ -364,7 +371,7 @@ class SmokeApplication(Adw.Application):
             )
             first_source.grab_focus()
             assert main.get_focus() is first_source
-            assert source_list.get_model().get_selected() == 0
+            assert source_list.get_model().get_selected() == 1
             assert main.child_focus(Gtk.DirectionType.DOWN)
             assert main.get_focus() is second_source
             assert main.child_focus(Gtk.DirectionType.UP)
@@ -373,6 +380,7 @@ class SmokeApplication(Adw.Application):
             assert is_focus_within(main.get_focus(), first_options)
             main.emit("move-focus", Gtk.DirectionType.TAB_BACKWARD)
             assert main.get_focus() is first_source
+            self.verify_aggregate_views(main)
             player_window = main.open_player(
                 UNTITLED_ARTICLE,
                 SUBSCRIPTION.title,
@@ -616,6 +624,47 @@ class SmokeApplication(Adw.Application):
         finally:
             self._close_and_quit()
         return GLib.SOURCE_REMOVE
+
+    def verify_aggregate_views(self, main: MainWindow) -> None:
+        """Exercise virtual rows and original article/episode callbacks offline."""
+        for kind in ("rss", "podcast"):
+            page = main.rss_page if kind == "rss" else main.podcast_page
+            assert page.list_box._arss_store.get_n_items() == 3
+            before = main.state.subscriptions(kind)
+            aggregate = ItemsWindow(main, kind, None)
+            try:
+                result = load_all(before, self.services.fetch_feed, kind)
+                aggregate._all_loaded(result)
+                assert aggregate._displayed
+                first = aggregate._displayed[0]
+                row = list_item_child(aggregate.list_box, 0)
+                label, hint = aggregate.list_box._arss_metadata[row]
+                assert first.source.title in label
+                assert (first.article.published_text or "Date unavailable") in label
+                assert label.index(first.source.title) > label.index("\n")
+                assert hint == main.t("episode_open_hint" if kind == "podcast" else "article_open_hint")
+                if kind == "rss":
+                    with patch("arss.ui.open_uri") as open_article:
+                        aggregate.list_box._arss_callbacks[row]()
+                    open_article.assert_called_once_with(aggregate, first.article.url, main.t)
+                else:
+                    with patch.object(main, "open_player") as open_player:
+                        aggregate.list_box._arss_callbacks[row]()
+                    open_player.assert_called_once_with(first.article, first.source.title)
+                aggregate.sort.set_selected(1)
+                assert main.state.get(f"{kind}_all_sort") == "source"
+                assert aggregate.list_box.get_model().get_selected() < len(aggregate._displayed)
+                # A failing source must not hide rows from a successful one.
+                partial = AggregateResult((SourcedArticle(before[0], ARTICLE),),
+                                          ((before[0], ParsedFeed("Feed", (ARTICLE,))),),
+                                          (before[1],))
+                aggregate._all_loaded(partial)
+                assert len(aggregate._displayed) == 1
+                assert aggregate.retry.get_visible()
+                assert before[1].title in aggregate.status.get_text()
+                assert main.state.subscriptions(kind) == before
+            finally:
+                aggregate.close()
 
     def _close_and_quit(self) -> None:
         for window in self.windows:

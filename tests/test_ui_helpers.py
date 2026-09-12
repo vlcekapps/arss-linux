@@ -63,7 +63,7 @@ class UiHelperTest(unittest.TestCase):
         )
 
     def test_version_fallback_uses_the_installed_package_version(self) -> None:
-        self.assertEqual("1.7.0", application_version(SimpleNamespace()))
+        self.assertEqual("1.8.0", application_version(SimpleNamespace()))
         self.assertEqual(
             "custom",
             application_version(SimpleNamespace(version="custom")),

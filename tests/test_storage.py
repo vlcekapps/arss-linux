@@ -108,6 +108,24 @@ class JsonPreferencesTest(unittest.TestCase):
         with self.assertRaises(PreferencesError):
             self.preferences.load()
 
+    def test_all_sort_preferences_persist_independently_and_migrate_invalid_values(self) -> None:
+        self.assertEqual("date", self.preferences.get("rss_all_sort"))
+        self.assertEqual("date", self.preferences.get("podcast_all_sort"))
+        self.preferences.set("rss_all_sort", "source")
+        reloaded = JsonPreferences(self.path)
+        self.assertEqual("source", reloaded.get("rss_all_sort"))
+        self.assertEqual("date", reloaded.get("podcast_all_sort"))
+        reloaded.set("podcast_all_sort", "source")
+        reloaded.set("rss_all_sort", "date")
+        self.assertEqual("source", self.preferences.get("podcast_all_sort"))
+        self.assertEqual("date", self.preferences.get("rss_all_sort"))
+        persisted = self.path.read_bytes()
+        with self.assertRaises(PreferencesError):
+            reloaded.set("rss_all_sort", "unsupported")
+        self.assertEqual(persisted, self.path.read_bytes())
+        self.path.write_text('{"rss_all_sort": false, "podcast_all_sort": "source"}', encoding="utf-8")
+        self.assertEqual("date", self.preferences.get("rss_all_sort"))
+        self.assertEqual("source", self.preferences.get("podcast_all_sort"))
 
     def test_legacy_sound_preferences_are_removed_during_migration(self) -> None:
         self.path.parent.mkdir(parents=True)
