@@ -1047,6 +1047,7 @@ class ItemsWindow(FormWindow):
             self.sort.set_selected(SORT_VALUES.index(stored) if stored in SORT_VALUES else 0)
             self.sort.connect("notify::selected", self._sort_changed)
             self.content.append(labelled(parent.t("all_sort_mnemonic"), self.sort))
+            self.content.append(description(parent.t("all_sort_help")))
         self.connect("map", self._start_once)
         self.connect("close-request", self._closing)
         self._started = False
