@@ -343,6 +343,7 @@ class SmokeApplication(Adw.Application):
             source_list = main.rss_page.list_box
             assert source_list.get_tab_behavior() == Gtk.ListTabBehavior.ITEM
             all_content = list_item_child(source_list, 0)
+            all_source = list_item_focus_widget(source_list, 0)
             assert isinstance(all_content, Gtk.Label)
             assert all_content.get_text() == "All"
             assert source_list._arss_metadata[all_content][0] == "All"
@@ -369,9 +370,12 @@ class SmokeApplication(Adw.Application):
                 first_source.get_accessible_role()
                 == Gtk.AccessibleRole.LIST_ITEM
             )
-            first_source.grab_focus()
+            assert all_source is not None
+            all_source.grab_focus()
+            assert main.get_focus() is all_source
+            assert source_list.get_model().get_selected() == 0
+            assert main.child_focus(Gtk.DirectionType.DOWN)
             assert main.get_focus() is first_source
-            assert source_list.get_model().get_selected() == 1
             assert main.child_focus(Gtk.DirectionType.DOWN)
             assert main.get_focus() is second_source
             assert main.child_focus(Gtk.DirectionType.UP)
