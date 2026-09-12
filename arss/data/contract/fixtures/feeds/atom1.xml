@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<atom:feed xmlns:atom="http://www.w3.org/2005/Atom">
+  <atom:title><![CDATA[<b>Obecný</b> Atom]]></atom:title>
+  <atom:id>urn:uuid:feed-fixture</atom:id>
+  <atom:updated>2026-07-22T11:15:00Z</atom:updated>
+
+  <atom:entry>
+    <atom:id>urn:uuid:article-one</atom:id>
+    <atom:title type="html">&lt;strong&gt;První&lt;/strong&gt; &amp;amp; test</atom:title>
+    <atom:link rel="enclosure" href="https://cdn.example.test/one.jpg" type="image/jpeg" />
+    <atom:link rel="alternate" href="../article/one" type="text/html; charset=utf-8" />
+    <atom:published>2026-07-22T10:00:00Z</atom:published>
+    <atom:updated>2026-07-22T11:15:00.987Z</atom:updated>
+    <atom:summary type="html">&lt;p&gt;Souhrn.&lt;/p&gt;</atom:summary>
+  </atom:entry>
+
+  <atom:entry>
+    <atom:id>urn:uuid:article-two</atom:id>
+    <atom:link href="/article/two" />
+    <atom:published>2026-07-21T10:00:00+01:00</atom:published>
+    <atom:summary type="text">Položka bez titulku a bez updated.</atom:summary>
+  </atom:entry>
+
+  <atom:entry>
+    <atom:id>urn:uuid:no-web-link</atom:id>
+    <atom:title>Položka bez webového odkazu se přeskočí</atom:title>
+    <atom:updated>2026-07-20T10:00:00Z</atom:updated>
+  </atom:entry>
+</atom:feed>

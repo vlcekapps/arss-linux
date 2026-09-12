@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/normalized-guide-program.schema.json",
+  "schemaVersion": "1.0.0",
+  "source": "centrum.schedule",
+  "stationId": "tv.nova",
+  "date": "2026-07-22",
+  "programs": [
+    {
+      "id": "centrum:3:9001",
+      "startMillis": 1784743200000,
+      "endMillis": 1784745000000,
+      "title": "Večerní zprávy",
+      "description": "Souhrn dne",
+      "audioDescription": false,
+      "audioDescriptionKnown": false,
+      "programUrl": null,
+      "archiveUrl": null
+    },
+    {
+      "id": "centrum:3:9002",
+      "startMillis": 1784745000000,
+      "endMillis": 1784747700000,
+      "title": "Film & zábava",
+      "description": "",
+      "audioDescription": false,
+      "audioDescriptionKnown": false,
+      "programUrl": null,
+      "archiveUrl": null
+    }
+  ]
+}

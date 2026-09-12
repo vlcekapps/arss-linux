@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vlcekapps/arss-contract/schemas/guide-stations.schema.json",
+  "title": "ARSS guide station catalogue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "stations"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "1.0.0"},
+    "stations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/station"}
+    }
+  },
+  "$defs": {
+    "station": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "medium", "displayName", "sortOrder", "family", "aliases", "providers"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^(tv|radio)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
+        "medium": {"enum": ["television", "radio"]},
+        "displayName": {"type": "string", "minLength": 1},
+        "sortOrder": {"type": "integer", "minimum": 0},
+        "family": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "aliases": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "providers": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "centrum": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id"],
+              "properties": {
+                "id": {"type": "string", "pattern": "^[0-9]+$"},
+                "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+              }
+            },
+            "ct": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["channel"],
+              "properties": {"channel": {"enum": ["ct1", "ct2", "ct24", "ct4", "ct5", "ct6"]}}
+            },
+            "rozhlas": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id"],
+              "properties": {"id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}}
+            },
+            "sms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name"],
+              "properties": {"name": {"type": "string", "minLength": 1}}
+            }
+          }
+        }
+      }
+    }
+  }
+}

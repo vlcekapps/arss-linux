@@ -1,0 +1,28 @@
+{
+  "$schema": "../../schemas/normalized-feed.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceUrl": "https://tn.nova.cz/feed/atom/tnnova-2",
+  "title": "Zpravodajství",
+  "items": [
+    {
+      "title": "Testovací článek & zprávy",
+      "url": "https://tn.nova.cz/zpravodajstvi/clanek/fixture-one",
+      "sourceId": "urn:uuid:tn-entry-one",
+      "publishedText": "2026-07-22T13:14:00+02:00",
+      "publishedAtMillis": 1784718840000,
+      "mediaUrl": null,
+      "mediaType": null,
+      "durationText": null
+    },
+    {
+      "title": "Druhá položka bez content",
+      "url": "https://tn.nova.cz/zpravodajstvi/clanek/fixture-two",
+      "sourceId": "urn:uuid:tn-entry-two",
+      "publishedText": "2026-07-22T13:10:00+02:00",
+      "publishedAtMillis": 1784718600000,
+      "mediaUrl": null,
+      "mediaType": null,
+      "durationText": null
+    }
+  ]
+}

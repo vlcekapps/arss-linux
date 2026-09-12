@@ -1,0 +1,11 @@
+{
+  "$schema": "./schemas/version.schema.json",
+  "contractVersion": "1.0.1",
+  "releasedAt": "2026-08-31",
+  "minimumConsumerVersion": "1.0.0",
+  "reference": {
+    "repository": "https://github.com/vlcekapps/arss-linux",
+    "tag": "v1.6.12",
+    "commit": "16245c06ca7659712d2b4788b45ee71c5c8cc9c2"
+  }
+}

@@ -1,0 +1,54 @@
+name: Weekly live guide drift
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out released contract
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate offline contract before network access
+        run: python tools/validate.py
+
+      - name: Read live discovery sources
+        id: drift
+        run: >-
+          python tools/live_drift.py
+          --report live-drift-report.md
+          --json live-drift-report.json
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Publish workflow summary
+        if: always()
+        run: cat live-drift-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve review artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-guide-drift-${{ github.run_id }}
+          path: |
+            live-drift-report.md
+            live-drift-report.json
+          retention-days: 30
+
+      - name: Flag catalogue drift for human review
+        if: steps.drift.outputs.has_drift == 'true'
+        run: echo "::warning::Live guide drift was observed. Review the report; no files were changed."
+
+      - name: Flag unavailable providers without inferring deletion
+        if: steps.drift.outputs.has_unavailable == 'true'
+        run: echo "::warning::At least one provider was unavailable. No station removal was inferred."

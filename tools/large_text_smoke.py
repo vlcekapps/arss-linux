@@ -118,6 +118,8 @@ class LargeTextApplication(Adw.Application):
                 ArticleInfoWindow(main, ARTICLE),
                 ProgramDetailWindow(main, UNTITLED_PROGRAMME),
                 ArticleInfoWindow(main, UNTITLED_ARTICLE),
+                ItemsWindow(main, "rss", None),
+                ItemsWindow(main, "podcast", None),
             ]
             items_window = form_windows[2]
             assert isinstance(items_window, ItemsWindow)
@@ -171,7 +173,7 @@ class LargeTextApplication(Adw.Application):
             assert recovery_body is not None
             assert minimum_width(recovery_body) <= MAX_REFLOW_WIDTH
 
-            first_source = list_item_child(main.rss_page.list_box, 0)
+            first_source = list_item_child(main.rss_page.list_box, 1)
             first_article = list_item_child(form_windows[2].list_box, 0)
             assert isinstance(first_source, Adw.WrapBox)
             assert isinstance(first_article, Adw.WrapBox)

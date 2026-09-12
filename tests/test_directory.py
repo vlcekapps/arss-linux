@@ -21,6 +21,7 @@ from arss.directory import (
     podcast_search_variants,
     podcast_storefront_country,
     rank_podcast_entries,
+    search_text_matches,
 )
 
 
@@ -34,6 +35,15 @@ class DirectoryTests(unittest.TestCase):
         self.assertTrue(all("android" in normalize_search_text(item.title + item.url) for item in android))
         self.assertEqual([], directory.search("   "))
         self.assertLessEqual(len(directory.search("rss")), 60)
+
+    def test_search_normalization_and_prefix_matching_follow_contract(self) -> None:
+        self.assertEqual("ffi strasse", normalize_search_text("ﬃ Straße"))
+        self.assertTrue(
+            search_text_matches("srdce nevi", "Srdce nevidomého dopraváka")
+        )
+        self.assertTrue(search_text_matches("oba", "foobar"))
+        self.assertFalse(search_text_matches("oba azq", "foobar bazqux"))
+        self.assertFalse(search_text_matches("vino radska", "Vinohradská"))
 
     def test_search_variants_ranking_and_storefront_match_android_policy(self) -> None:
         self.assertEqual(

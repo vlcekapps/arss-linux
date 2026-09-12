@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "contractVersion": "1.0.1",
+  "sourceRepository": "https://github.com/vlcekapps/arss-contract",
+  "sourceTag": "v1.0.1",
+  "sourceCommit": "029638197d24cda4de48d212d4fe1471d677cea2",
+  "manifestSha256": "8fb6964e3d4da28e59d6011937fc5a5a95cb4ff5695c88599dc59f3138d2277b"
+}

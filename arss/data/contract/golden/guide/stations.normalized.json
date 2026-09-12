@@ -1,0 +1,1158 @@
+{
+  "$schema": "../../schemas/normalized-guide.schema.json",
+  "schemaVersion": "1.0.0",
+  "stations": [
+    {
+      "id": "tv.ct1",
+      "medium": "television",
+      "displayName": "ČT1",
+      "sortOrder": 0
+    },
+    {
+      "id": "tv.ct2",
+      "medium": "television",
+      "displayName": "ČT2",
+      "sortOrder": 1
+    },
+    {
+      "id": "tv.ct24",
+      "medium": "television",
+      "displayName": "ČT24",
+      "sortOrder": 2
+    },
+    {
+      "id": "tv.ct-sport",
+      "medium": "television",
+      "displayName": "ČT sport",
+      "sortOrder": 3
+    },
+    {
+      "id": "tv.ct-d",
+      "medium": "television",
+      "displayName": "ČT :D",
+      "sortOrder": 4
+    },
+    {
+      "id": "tv.ct-art",
+      "medium": "television",
+      "displayName": "ČT art",
+      "sortOrder": 5
+    },
+    {
+      "id": "tv.nova",
+      "medium": "television",
+      "displayName": "Nova",
+      "sortOrder": 6
+    },
+    {
+      "id": "tv.nova-cinema",
+      "medium": "television",
+      "displayName": "Nova Cinema",
+      "sortOrder": 7
+    },
+    {
+      "id": "tv.nova-action",
+      "medium": "television",
+      "displayName": "Nova Action",
+      "sortOrder": 8
+    },
+    {
+      "id": "tv.nova-fun",
+      "medium": "television",
+      "displayName": "Nova Fun",
+      "sortOrder": 9
+    },
+    {
+      "id": "tv.nova-krimi",
+      "medium": "television",
+      "displayName": "Nova Krimi",
+      "sortOrder": 10
+    },
+    {
+      "id": "tv.nova-lady",
+      "medium": "television",
+      "displayName": "Nova Lady",
+      "sortOrder": 11
+    },
+    {
+      "id": "tv.nova-sport-1",
+      "medium": "television",
+      "displayName": "Nova Sport 1",
+      "sortOrder": 12
+    },
+    {
+      "id": "tv.nova-sport-2",
+      "medium": "television",
+      "displayName": "Nova Sport 2",
+      "sortOrder": 13
+    },
+    {
+      "id": "tv.nova-sport-3",
+      "medium": "television",
+      "displayName": "Nova Sport 3",
+      "sortOrder": 14
+    },
+    {
+      "id": "tv.nova-sport-4",
+      "medium": "television",
+      "displayName": "Nova Sport 4",
+      "sortOrder": 15
+    },
+    {
+      "id": "tv.nova-sport-5",
+      "medium": "television",
+      "displayName": "Nova Sport 5",
+      "sortOrder": 16
+    },
+    {
+      "id": "tv.nova-sport-6",
+      "medium": "television",
+      "displayName": "Nova Sport 6",
+      "sortOrder": 17
+    },
+    {
+      "id": "tv.prima",
+      "medium": "television",
+      "displayName": "Prima",
+      "sortOrder": 18
+    },
+    {
+      "id": "tv.prima-cool",
+      "medium": "television",
+      "displayName": "Prima Cool",
+      "sortOrder": 19
+    },
+    {
+      "id": "tv.prima-max",
+      "medium": "television",
+      "displayName": "Prima MAX",
+      "sortOrder": 20
+    },
+    {
+      "id": "tv.prima-krimi",
+      "medium": "television",
+      "displayName": "Prima Krimi",
+      "sortOrder": 21
+    },
+    {
+      "id": "tv.prima-love",
+      "medium": "television",
+      "displayName": "Prima Love",
+      "sortOrder": 22
+    },
+    {
+      "id": "tv.prima-plus",
+      "medium": "television",
+      "displayName": "Prima PLUS",
+      "sortOrder": 23
+    },
+    {
+      "id": "tv.prima-show",
+      "medium": "television",
+      "displayName": "Prima Show",
+      "sortOrder": 24
+    },
+    {
+      "id": "tv.prima-sport",
+      "medium": "television",
+      "displayName": "Prima Sport",
+      "sortOrder": 25
+    },
+    {
+      "id": "tv.prima-star",
+      "medium": "television",
+      "displayName": "Prima Star",
+      "sortOrder": 26
+    },
+    {
+      "id": "tv.prima-zoom",
+      "medium": "television",
+      "displayName": "Prima ZOOM",
+      "sortOrder": 27
+    },
+    {
+      "id": "tv.cnn-prima-news",
+      "medium": "television",
+      "displayName": "CNN Prima News",
+      "sortOrder": 28
+    },
+    {
+      "id": "tv.barrandov",
+      "medium": "television",
+      "displayName": "Barrandov",
+      "sortOrder": 29
+    },
+    {
+      "id": "tv.barrandov-krimi",
+      "medium": "television",
+      "displayName": "Barrandov Krimi",
+      "sortOrder": 30
+    },
+    {
+      "id": "tv.kino-barrandov",
+      "medium": "television",
+      "displayName": "Kino Barrandov",
+      "sortOrder": 31
+    },
+    {
+      "id": "tv.jednotka",
+      "medium": "television",
+      "displayName": "Jednotka",
+      "sortOrder": 32
+    },
+    {
+      "id": "tv.dvojka",
+      "medium": "television",
+      "displayName": "Dvojka",
+      "sortOrder": 33
+    },
+    {
+      "id": "tv.markiza",
+      "medium": "television",
+      "displayName": "Markíza",
+      "sortOrder": 34
+    },
+    {
+      "id": "tv.markiza-international",
+      "medium": "television",
+      "displayName": "Markíza International",
+      "sortOrder": 35
+    },
+    {
+      "id": "tv.joj",
+      "medium": "television",
+      "displayName": "JOJ",
+      "sortOrder": 36
+    },
+    {
+      "id": "tv.joj-plus",
+      "medium": "television",
+      "displayName": "JOJ+",
+      "sortOrder": 37
+    },
+    {
+      "id": "tv.joj-cinema",
+      "medium": "television",
+      "displayName": "JOJ Cinema",
+      "sortOrder": 38
+    },
+    {
+      "id": "tv.joj-family",
+      "medium": "television",
+      "displayName": "JOJ Family",
+      "sortOrder": 39
+    },
+    {
+      "id": "tv.jojko",
+      "medium": "television",
+      "displayName": "Jojko",
+      "sortOrder": 40
+    },
+    {
+      "id": "tv.animal-planet",
+      "medium": "television",
+      "displayName": "Animal Planet",
+      "sortOrder": 41
+    },
+    {
+      "id": "tv.amc",
+      "medium": "television",
+      "displayName": "AMC",
+      "sortOrder": 42
+    },
+    {
+      "id": "tv.axn",
+      "medium": "television",
+      "displayName": "AXN",
+      "sortOrder": 43
+    },
+    {
+      "id": "tv.axn-black",
+      "medium": "television",
+      "displayName": "AXN Black",
+      "sortOrder": 44
+    },
+    {
+      "id": "tv.axn-white",
+      "medium": "television",
+      "displayName": "AXN White",
+      "sortOrder": 45
+    },
+    {
+      "id": "tv.canal-plus-sport",
+      "medium": "television",
+      "displayName": "Canal+ Sport",
+      "sortOrder": 46
+    },
+    {
+      "id": "tv.canal-plus-sport-2",
+      "medium": "television",
+      "displayName": "Canal+ Sport 2",
+      "sortOrder": 47
+    },
+    {
+      "id": "tv.canal-plus-sport-3",
+      "medium": "television",
+      "displayName": "Canal+ Sport 3",
+      "sortOrder": 48
+    },
+    {
+      "id": "tv.canal-plus-sport-4",
+      "medium": "television",
+      "displayName": "Canal+ Sport 4",
+      "sortOrder": 49
+    },
+    {
+      "id": "tv.canal-plus-sport-5",
+      "medium": "television",
+      "displayName": "Canal+ Sport 5",
+      "sortOrder": 50
+    },
+    {
+      "id": "tv.canal-plus-sport-6",
+      "medium": "television",
+      "displayName": "Canal+ Sport 6",
+      "sortOrder": 51
+    },
+    {
+      "id": "tv.canal-plus-sport-7",
+      "medium": "television",
+      "displayName": "Canal+ Sport 7",
+      "sortOrder": 52
+    },
+    {
+      "id": "tv.canal-plus-sport-8",
+      "medium": "television",
+      "displayName": "Canal+ Sport 8",
+      "sortOrder": 53
+    },
+    {
+      "id": "tv.cartoon-plus-tcm",
+      "medium": "television",
+      "displayName": "Cartoon+TCM",
+      "sortOrder": 54
+    },
+    {
+      "id": "tv.cs-film",
+      "medium": "television",
+      "displayName": "CS Film",
+      "sortOrder": 55
+    },
+    {
+      "id": "tv.cs-history",
+      "medium": "television",
+      "displayName": "CS History",
+      "sortOrder": 56
+    },
+    {
+      "id": "tv.cs-horror",
+      "medium": "television",
+      "displayName": "CS Horror",
+      "sortOrder": 57
+    },
+    {
+      "id": "tv.cinemax",
+      "medium": "television",
+      "displayName": "Cinemax",
+      "sortOrder": 58
+    },
+    {
+      "id": "tv.cinemax-2",
+      "medium": "television",
+      "displayName": "Cinemax 2",
+      "sortOrder": 59
+    },
+    {
+      "id": "tv.discovery-channel",
+      "medium": "television",
+      "displayName": "Discovery Channel",
+      "sortOrder": 60
+    },
+    {
+      "id": "tv.discovery-science",
+      "medium": "television",
+      "displayName": "Discovery Science",
+      "sortOrder": 61
+    },
+    {
+      "id": "tv.cbs-reality",
+      "medium": "television",
+      "displayName": "CBS Reality",
+      "sortOrder": 62
+    },
+    {
+      "id": "tv.disney-channel",
+      "medium": "television",
+      "displayName": "Disney Channel",
+      "sortOrder": 63
+    },
+    {
+      "id": "tv.eurosport",
+      "medium": "television",
+      "displayName": "Eurosport",
+      "sortOrder": 64
+    },
+    {
+      "id": "tv.eurosport-2",
+      "medium": "television",
+      "displayName": "Eurosport 2",
+      "sortOrder": 65
+    },
+    {
+      "id": "tv.film-plus",
+      "medium": "television",
+      "displayName": "Film+",
+      "sortOrder": 66
+    },
+    {
+      "id": "tv.filmbox",
+      "medium": "television",
+      "displayName": "Filmbox",
+      "sortOrder": 67
+    },
+    {
+      "id": "tv.filmbox-stars",
+      "medium": "television",
+      "displayName": "Filmbox Stars",
+      "sortOrder": 68
+    },
+    {
+      "id": "tv.paramount-network",
+      "medium": "television",
+      "displayName": "Paramount Network",
+      "sortOrder": 69
+    },
+    {
+      "id": "tv.hbo",
+      "medium": "television",
+      "displayName": "HBO",
+      "sortOrder": 70
+    },
+    {
+      "id": "tv.hbo-2",
+      "medium": "television",
+      "displayName": "HBO 2",
+      "sortOrder": 71
+    },
+    {
+      "id": "tv.hbo-3",
+      "medium": "television",
+      "displayName": "HBO 3",
+      "sortOrder": 72
+    },
+    {
+      "id": "tv.history-channel",
+      "medium": "television",
+      "displayName": "History Channel",
+      "sortOrder": 73
+    },
+    {
+      "id": "tv.jimjam",
+      "medium": "television",
+      "displayName": "JimJam",
+      "sortOrder": 74
+    },
+    {
+      "id": "tv.mezzo",
+      "medium": "television",
+      "displayName": "Mezzo",
+      "sortOrder": 75
+    },
+    {
+      "id": "tv.mtv",
+      "medium": "television",
+      "displayName": "MTV",
+      "sortOrder": 76
+    },
+    {
+      "id": "tv.mtv-00s",
+      "medium": "television",
+      "displayName": "MTV 00s",
+      "sortOrder": 77
+    },
+    {
+      "id": "tv.mtv-80s",
+      "medium": "television",
+      "displayName": "MTV 80s",
+      "sortOrder": 78
+    },
+    {
+      "id": "tv.mtv-90s",
+      "medium": "television",
+      "displayName": "MTV 90s",
+      "sortOrder": 79
+    },
+    {
+      "id": "tv.club-mtv",
+      "medium": "television",
+      "displayName": "Club MTV",
+      "sortOrder": 80
+    },
+    {
+      "id": "tv.national-geographic",
+      "medium": "television",
+      "displayName": "National Geographic",
+      "sortOrder": 81
+    },
+    {
+      "id": "tv.national-geographic-wild",
+      "medium": "television",
+      "displayName": "National Geographic Wild",
+      "sortOrder": 82
+    },
+    {
+      "id": "tv.oneplay-sport-1",
+      "medium": "television",
+      "displayName": "Oneplay Sport 1",
+      "sortOrder": 83
+    },
+    {
+      "id": "tv.oneplay-sport-2",
+      "medium": "television",
+      "displayName": "Oneplay Sport 2",
+      "sortOrder": 84
+    },
+    {
+      "id": "tv.oneplay-sport-3",
+      "medium": "television",
+      "displayName": "Oneplay Sport 3",
+      "sortOrder": 85
+    },
+    {
+      "id": "tv.oneplay-sport-4",
+      "medium": "television",
+      "displayName": "Oneplay Sport 4",
+      "sortOrder": 86
+    },
+    {
+      "id": "tv.oneplay-sport-md1",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD1",
+      "sortOrder": 87
+    },
+    {
+      "id": "tv.oneplay-sport-md2",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD2",
+      "sortOrder": 88
+    },
+    {
+      "id": "tv.oneplay-sport-md3",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD3",
+      "sortOrder": 89
+    },
+    {
+      "id": "tv.oneplay-sport-md4",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD4",
+      "sortOrder": 90
+    },
+    {
+      "id": "tv.oneplay-sport-md5",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD5",
+      "sortOrder": 91
+    },
+    {
+      "id": "tv.oneplay-sport-md6",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD6",
+      "sortOrder": 92
+    },
+    {
+      "id": "tv.oneplay-sport-md7",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD7",
+      "sortOrder": 93
+    },
+    {
+      "id": "tv.oneplay-sport-md8",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD8",
+      "sortOrder": 94
+    },
+    {
+      "id": "tv.oneplay-sport-md9",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD9",
+      "sortOrder": 95
+    },
+    {
+      "id": "tv.oneplay-sport-md10",
+      "medium": "television",
+      "displayName": "Oneplay Sport MD10",
+      "sortOrder": 96
+    },
+    {
+      "id": "tv.ocko",
+      "medium": "television",
+      "displayName": "Óčko",
+      "sortOrder": 97
+    },
+    {
+      "id": "tv.seznam-tv",
+      "medium": "television",
+      "displayName": "Seznam TV",
+      "sortOrder": 98
+    },
+    {
+      "id": "tv.spektrum",
+      "medium": "television",
+      "displayName": "Spektrum",
+      "sortOrder": 99
+    },
+    {
+      "id": "tv.spektrum-home",
+      "medium": "television",
+      "displayName": "Spektrum Home",
+      "sortOrder": 100
+    },
+    {
+      "id": "tv.sport1",
+      "medium": "television",
+      "displayName": "Sport1",
+      "sortOrder": 101
+    },
+    {
+      "id": "tv.sport2",
+      "medium": "television",
+      "displayName": "Sport2",
+      "sortOrder": 102
+    },
+    {
+      "id": "tv.sport5",
+      "medium": "television",
+      "displayName": "Sport5",
+      "sortOrder": 103
+    },
+    {
+      "id": "tv.travel-channel",
+      "medium": "television",
+      "displayName": "Travel Channel",
+      "sortOrder": 104
+    },
+    {
+      "id": "tv.fashion-tv",
+      "medium": "television",
+      "displayName": "Fashion TV",
+      "sortOrder": 105
+    },
+    {
+      "id": "tv.tlc",
+      "medium": "television",
+      "displayName": "TLC",
+      "sortOrder": 106
+    },
+    {
+      "id": "tv.tv-noe",
+      "medium": "television",
+      "displayName": "TV Noe",
+      "sortOrder": 107
+    },
+    {
+      "id": "tv.tv-paprika",
+      "medium": "television",
+      "displayName": "TV Paprika",
+      "sortOrder": 108
+    },
+    {
+      "id": "tv.vh1",
+      "medium": "television",
+      "displayName": "VH1",
+      "sortOrder": 109
+    },
+    {
+      "id": "tv.viasat-explorer",
+      "medium": "television",
+      "displayName": "Viasat Explorer",
+      "sortOrder": 110
+    },
+    {
+      "id": "tv.viasat-history",
+      "medium": "television",
+      "displayName": "Viasat History",
+      "sortOrder": 111
+    },
+    {
+      "id": "tv.baby-tv",
+      "medium": "television",
+      "displayName": "Baby TV",
+      "sortOrder": 112
+    },
+    {
+      "id": "tv.bbc-world-news",
+      "medium": "television",
+      "displayName": "BBC World News",
+      "sortOrder": 113
+    },
+    {
+      "id": "tv.boomerang",
+      "medium": "television",
+      "displayName": "Boomerang",
+      "sortOrder": 114
+    },
+    {
+      "id": "tv.c-music-tv",
+      "medium": "television",
+      "displayName": "C Music",
+      "sortOrder": 115
+    },
+    {
+      "id": "tv.cnbc-europe",
+      "medium": "television",
+      "displayName": "CNBC Europe",
+      "sortOrder": 116
+    },
+    {
+      "id": "tv.cnn",
+      "medium": "television",
+      "displayName": "CNN",
+      "sortOrder": 117
+    },
+    {
+      "id": "tv.euronews",
+      "medium": "television",
+      "displayName": "Euronews",
+      "sortOrder": 118
+    },
+    {
+      "id": "tv.rt",
+      "medium": "television",
+      "displayName": "RT",
+      "sortOrder": 119
+    },
+    {
+      "id": "tv.extreme-sports",
+      "medium": "television",
+      "displayName": "Extreme Sports",
+      "sortOrder": 120
+    },
+    {
+      "id": "tv.france-24",
+      "medium": "television",
+      "displayName": "France 24",
+      "sortOrder": 121
+    },
+    {
+      "id": "tv.music-box",
+      "medium": "television",
+      "displayName": "Music Box",
+      "sortOrder": 122
+    },
+    {
+      "id": "tv.ta3",
+      "medium": "television",
+      "displayName": "TA3",
+      "sortOrder": 123
+    },
+    {
+      "id": "tv.tv5-monde",
+      "medium": "television",
+      "displayName": "TV5 Monde",
+      "sortOrder": 124
+    },
+    {
+      "id": "tv.tv-doma",
+      "medium": "television",
+      "displayName": "TV Doma",
+      "sortOrder": 125
+    },
+    {
+      "id": "tv.hustler",
+      "medium": "television",
+      "displayName": "Hustler",
+      "sortOrder": 126
+    },
+    {
+      "id": "tv.leo-tv",
+      "medium": "television",
+      "displayName": "Leo TV",
+      "sortOrder": 127
+    },
+    {
+      "id": "radio.radiozurnal",
+      "medium": "radio",
+      "displayName": "Radiožurnál",
+      "sortOrder": 0
+    },
+    {
+      "id": "radio.dvojka",
+      "medium": "radio",
+      "displayName": "Dvojka",
+      "sortOrder": 1
+    },
+    {
+      "id": "radio.vltava",
+      "medium": "radio",
+      "displayName": "Vltava",
+      "sortOrder": 2
+    },
+    {
+      "id": "radio.plus",
+      "medium": "radio",
+      "displayName": "Plus",
+      "sortOrder": 3
+    },
+    {
+      "id": "radio.radiozurnal-sport",
+      "medium": "radio",
+      "displayName": "Radiožurnál Sport",
+      "sortOrder": 4
+    },
+    {
+      "id": "radio.radio-wave",
+      "medium": "radio",
+      "displayName": "Radio Wave",
+      "sortOrder": 5
+    },
+    {
+      "id": "radio.radio-junior",
+      "medium": "radio",
+      "displayName": "Rádio Junior",
+      "sortOrder": 6
+    },
+    {
+      "id": "radio.d-dur",
+      "medium": "radio",
+      "displayName": "D-dur",
+      "sortOrder": 7
+    },
+    {
+      "id": "radio.jazz",
+      "medium": "radio",
+      "displayName": "Jazz",
+      "sortOrder": 8
+    },
+    {
+      "id": "radio.cesky-rozhlas-pohoda",
+      "medium": "radio",
+      "displayName": "Český rozhlas Pohoda",
+      "sortOrder": 9
+    },
+    {
+      "id": "radio.radio-prague-international",
+      "medium": "radio",
+      "displayName": "Radio Prague International",
+      "sortOrder": 10
+    },
+    {
+      "id": "radio.brno",
+      "medium": "radio",
+      "displayName": "Brno",
+      "sortOrder": 11
+    },
+    {
+      "id": "radio.ceske-budejovice",
+      "medium": "radio",
+      "displayName": "České Budějovice",
+      "sortOrder": 12
+    },
+    {
+      "id": "radio.hradec-kralove",
+      "medium": "radio",
+      "displayName": "Hradec Králové",
+      "sortOrder": 13
+    },
+    {
+      "id": "radio.karlovy-vary",
+      "medium": "radio",
+      "displayName": "Karlovy Vary",
+      "sortOrder": 14
+    },
+    {
+      "id": "radio.liberec",
+      "medium": "radio",
+      "displayName": "Liberec",
+      "sortOrder": 15
+    },
+    {
+      "id": "radio.olomouc",
+      "medium": "radio",
+      "displayName": "Olomouc",
+      "sortOrder": 16
+    },
+    {
+      "id": "radio.ostrava",
+      "medium": "radio",
+      "displayName": "Ostrava",
+      "sortOrder": 17
+    },
+    {
+      "id": "radio.pardubice",
+      "medium": "radio",
+      "displayName": "Pardubice",
+      "sortOrder": 18
+    },
+    {
+      "id": "radio.plzen",
+      "medium": "radio",
+      "displayName": "Plzeň",
+      "sortOrder": 19
+    },
+    {
+      "id": "radio.radio-praha",
+      "medium": "radio",
+      "displayName": "Rádio Praha",
+      "sortOrder": 20
+    },
+    {
+      "id": "radio.stredni-cechy",
+      "medium": "radio",
+      "displayName": "Střední Čechy",
+      "sortOrder": 21
+    },
+    {
+      "id": "radio.sever",
+      "medium": "radio",
+      "displayName": "Sever",
+      "sortOrder": 22
+    },
+    {
+      "id": "radio.vysocina",
+      "medium": "radio",
+      "displayName": "Vysočina",
+      "sortOrder": 23
+    },
+    {
+      "id": "radio.zlin",
+      "medium": "radio",
+      "displayName": "Zlín",
+      "sortOrder": 24
+    },
+    {
+      "id": "radio.sro1-slovensko",
+      "medium": "radio",
+      "displayName": "SRO1 - Slovensko",
+      "sortOrder": 25
+    },
+    {
+      "id": "radio.sro2-regina-stred",
+      "medium": "radio",
+      "displayName": "SRO2 - Regina Stred",
+      "sortOrder": 26
+    },
+    {
+      "id": "radio.sro2-regina-vychod",
+      "medium": "radio",
+      "displayName": "SRO2 - Regina Východ",
+      "sortOrder": 27
+    },
+    {
+      "id": "radio.sro2-regina-zapad",
+      "medium": "radio",
+      "displayName": "SRO2 - Regina Západ",
+      "sortOrder": 28
+    },
+    {
+      "id": "radio.sro3-devin",
+      "medium": "radio",
+      "displayName": "SRO3 - Devín",
+      "sortOrder": 29
+    },
+    {
+      "id": "radio.sro4-radio-fm",
+      "medium": "radio",
+      "displayName": "SRO4 - Radio FM",
+      "sortOrder": 30
+    },
+    {
+      "id": "radio.sro5-patria",
+      "medium": "radio",
+      "displayName": "SRO5 - Patria",
+      "sortOrder": 31
+    },
+    {
+      "id": "radio.sro6-slovakia-international",
+      "medium": "radio",
+      "displayName": "SRO6 - Slovakia International",
+      "sortOrder": 32
+    },
+    {
+      "id": "radio.sro7-klasika",
+      "medium": "radio",
+      "displayName": "SRO7 - Klasika",
+      "sortOrder": 33
+    },
+    {
+      "id": "radio.sro8-litera",
+      "medium": "radio",
+      "displayName": "SRO8 - Litera",
+      "sortOrder": 34
+    },
+    {
+      "id": "radio.bbc-czech",
+      "medium": "radio",
+      "displayName": "BBC Czech",
+      "sortOrder": 35
+    },
+    {
+      "id": "radio.bbc-radio",
+      "medium": "radio",
+      "displayName": "BBC Radio",
+      "sortOrder": 36
+    },
+    {
+      "id": "radio.classic-fm",
+      "medium": "radio",
+      "displayName": "Classic FM",
+      "sortOrder": 37
+    },
+    {
+      "id": "radio.country-radio",
+      "medium": "radio",
+      "displayName": "Country Radio",
+      "sortOrder": 38
+    },
+    {
+      "id": "radio.dance-radio",
+      "medium": "radio",
+      "displayName": "Dance Radio",
+      "sortOrder": 39
+    },
+    {
+      "id": "radio.evropa-2",
+      "medium": "radio",
+      "displayName": "Evropa 2",
+      "sortOrder": 40
+    },
+    {
+      "id": "radio.fajn-radio",
+      "medium": "radio",
+      "displayName": "Fajn radio",
+      "sortOrder": 41
+    },
+    {
+      "id": "radio.frekvence-1",
+      "medium": "radio",
+      "displayName": "Frekvence 1",
+      "sortOrder": 42
+    },
+    {
+      "id": "radio.impuls",
+      "medium": "radio",
+      "displayName": "Impuls",
+      "sortOrder": 43
+    },
+    {
+      "id": "radio.kiss-98",
+      "medium": "radio",
+      "displayName": "Kiss 98",
+      "sortOrder": 44
+    },
+    {
+      "id": "radio.kiss-morava",
+      "medium": "radio",
+      "displayName": "Kiss Morava",
+      "sortOrder": 45
+    },
+    {
+      "id": "radio.radio-1",
+      "medium": "radio",
+      "displayName": "Radio 1",
+      "sortOrder": 46
+    },
+    {
+      "id": "radio.radio7",
+      "medium": "radio",
+      "displayName": "Radio7",
+      "sortOrder": 47
+    },
+    {
+      "id": "radio.radio-beat",
+      "medium": "radio",
+      "displayName": "Radio Beat",
+      "sortOrder": 48
+    },
+    {
+      "id": "radio.radio-blanik",
+      "medium": "radio",
+      "displayName": "Rádio Blaník",
+      "sortOrder": 49
+    },
+    {
+      "id": "radio.radio-cas",
+      "medium": "radio",
+      "displayName": "Radio Čas",
+      "sortOrder": 50
+    },
+    {
+      "id": "radio.radio-proglas",
+      "medium": "radio",
+      "displayName": "Radio Proglas",
+      "sortOrder": 51
+    },
+    {
+      "id": "radio.europa-2",
+      "medium": "radio",
+      "displayName": "Europa 2",
+      "sortOrder": 52
+    },
+    {
+      "id": "radio.fun-radio",
+      "medium": "radio",
+      "displayName": "Fun rádio",
+      "sortOrder": 53
+    },
+    {
+      "id": "radio.jemne-melodie",
+      "medium": "radio",
+      "displayName": "Jemne Melodie",
+      "sortOrder": 54
+    },
+    {
+      "id": "radio.lumen",
+      "medium": "radio",
+      "displayName": "Lumen",
+      "sortOrder": 55
+    },
+    {
+      "id": "radio.radio-antena-rock",
+      "medium": "radio",
+      "displayName": "Rádio Anténa Rock",
+      "sortOrder": 56
+    },
+    {
+      "id": "radio.radio-expres",
+      "medium": "radio",
+      "displayName": "Radio Expres",
+      "sortOrder": 57
+    },
+    {
+      "id": "radio.radio-junior-sk",
+      "medium": "radio",
+      "displayName": "Radio Junior (sk)",
+      "sortOrder": 58
+    },
+    {
+      "id": "radio.radio-liptov",
+      "medium": "radio",
+      "displayName": "Rádio Liptov",
+      "sortOrder": 59
+    },
+    {
+      "id": "radio.radio-sity",
+      "medium": "radio",
+      "displayName": "Rádio SiTy",
+      "sortOrder": 60
+    },
+    {
+      "id": "radio.radio-viva",
+      "medium": "radio",
+      "displayName": "Rádio VIVA",
+      "sortOrder": 61
+    },
+    {
+      "id": "radio.radio-vlna",
+      "medium": "radio",
+      "displayName": "Rádio Vlna",
+      "sortOrder": 62
+    },
+    {
+      "id": "radio.radio-wow",
+      "medium": "radio",
+      "displayName": "Radio WOW",
+      "sortOrder": 63
+    }
+  ]
+}

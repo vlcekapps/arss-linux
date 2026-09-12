@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vlcekapps/arss-contract/schemas/normalized-guide.schema.json",
+  "title": "ARSS normalized guide station golden result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "stations"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "1.0.0"},
+    "stations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "medium", "displayName", "sortOrder"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^(tv|radio)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
+          "medium": {"enum": ["television", "radio"]},
+          "displayName": {"type": "string", "minLength": 1},
+          "sortOrder": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  }
+}

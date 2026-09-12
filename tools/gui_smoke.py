@@ -11,6 +11,7 @@ import sys
 import threading
 from types import SimpleNamespace
 import traceback
+from unittest.mock import patch
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
@@ -19,9 +20,10 @@ import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from arss.directory import DirectoryEntry  # noqa: E402
+from arss.aggregate import AggregateResult, SourcedArticle, load_all  # noqa: E402
 from arss.guide import GuideMedium, GuideProgramEntry, GuideStation  # noqa: E402
 from arss.gtk_helpers import (  # noqa: E402
     list_item_child,
@@ -64,16 +66,21 @@ SECOND_SUBSCRIPTION = FeedSubscription(
     "Second feed",
     "https://example.test/second.xml",
 )
-STATION = GuideStation("centrum:1", "ČT1", GuideMedium.TELEVISION)
+STATION = GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION)
 GUIDE_STATIONS = (
-    GuideStation("centrum:4", "Prima", GuideMedium.TELEVISION),
-    GuideStation("centrum:465", "Nova Sport 2", GuideMedium.TELEVISION),
-    GuideStation("sms:Nova Sport 6", "Nova Sport 6", GuideMedium.TELEVISION),
+    GuideStation("tv.prima", "Prima", GuideMedium.TELEVISION),
+    GuideStation("tv.nova-sport-2", "Nova Sport 2", GuideMedium.TELEVISION),
+    GuideStation(
+        "tv.nova-sport-6",
+        "Nova Sport 6",
+        GuideMedium.TELEVISION,
+        aliases=("Nova Sport šest",),
+    ),
     STATION,
-    GuideStation("centrum:3", "Nova", GuideMedium.TELEVISION),
+    GuideStation("tv.nova", "Nova", GuideMedium.TELEVISION),
 )
 RADIO_STATION = GuideStation(
-    "rozhlas:radiozurnal",
+    "radio.radiozurnal",
     "Radiožurnál",
     GuideMedium.RADIO,
 )
@@ -287,16 +294,10 @@ class SmokeApplication(Adw.Application):
             assert self.main_window is not None
             main = self.main_window
             station = main.guide_page.station
-            station_expression = station.get_expression()
-            assert station.get_enable_search()
-            assert station.get_tooltip_text() == (
-                "Open the list and press Shift+Tab to reach the search field."
-            )
-            assert station_expression is not None
-            assert station_expression.get_value_type() == GObject.TYPE_STRING
+            assert not station.get_enable_search()
             assert (
-                station.get_search_match_mode()
-                == Gtk.StringFilterMatchMode.PREFIX
+                main.guide_page.station_search.get_placeholder_text()
+                == "Station name or alias"
             )
             assert (
                 station.get_accessible_role()
@@ -341,10 +342,16 @@ class SmokeApplication(Adw.Application):
 
             source_list = main.rss_page.list_box
             assert source_list.get_tab_behavior() == Gtk.ListTabBehavior.ITEM
-            first_source_content = list_item_child(source_list, 0)
-            second_source_content = list_item_child(source_list, 1)
-            first_source = list_item_focus_widget(source_list, 0)
-            second_source = list_item_focus_widget(source_list, 1)
+            all_content = list_item_child(source_list, 0)
+            all_source = list_item_focus_widget(source_list, 0)
+            assert isinstance(all_content, Gtk.Label)
+            assert all_content.get_text() == "All"
+            assert source_list._arss_metadata[all_content][0] == "All"
+            assert not widget_descendants(all_content)  # no edit/delete menu
+            first_source_content = list_item_child(source_list, 1)
+            second_source_content = list_item_child(source_list, 2)
+            first_source = list_item_focus_widget(source_list, 1)
+            second_source = list_item_focus_widget(source_list, 2)
             assert isinstance(first_source_content, Adw.WrapBox)
             assert isinstance(second_source_content, Adw.WrapBox)
             assert first_source is not None
@@ -363,9 +370,12 @@ class SmokeApplication(Adw.Application):
                 first_source.get_accessible_role()
                 == Gtk.AccessibleRole.LIST_ITEM
             )
-            first_source.grab_focus()
-            assert main.get_focus() is first_source
+            assert all_source is not None
+            all_source.grab_focus()
+            assert main.get_focus() is all_source
             assert source_list.get_model().get_selected() == 0
+            assert main.child_focus(Gtk.DirectionType.DOWN)
+            assert main.get_focus() is first_source
             assert main.child_focus(Gtk.DirectionType.DOWN)
             assert main.get_focus() is second_source
             assert main.child_focus(Gtk.DirectionType.UP)
@@ -374,6 +384,7 @@ class SmokeApplication(Adw.Application):
             assert is_focus_within(main.get_focus(), first_options)
             main.emit("move-focus", Gtk.DirectionType.TAB_BACKWARD)
             assert main.get_focus() is first_source
+            self.verify_aggregate_views(main)
             player_window = main.open_player(
                 UNTITLED_ARTICLE,
                 SUBSCRIPTION.title,
@@ -463,11 +474,11 @@ class SmokeApplication(Adw.Application):
             guide = self.main_window.guide_page
             assert guide.station.get_sensitive()
             assert [station.id for station in guide.stations] == [
-                "centrum:1",
-                "centrum:3",
-                "centrum:465",
-                "sms:Nova Sport 6",
-                "centrum:4",
+                "tv.ct1",
+                "tv.nova",
+                "tv.nova-sport-2",
+                "tv.nova-sport-6",
+                "tv.prima",
             ]
             model = guide.station.get_model()
             assert model is not None
@@ -476,42 +487,11 @@ class SmokeApplication(Adw.Application):
                 for position in range(model.get_n_items())
             ] == ["ČT1", "Nova", "Nova Sport 2", "Nova Sport 6", "Prima"]
             selected = guide.station.get_selected()
-            assert guide.stations[selected].id == "sms:Nova Sport 6"
-
-            self.station_popover = next(
-                widget
-                for widget in widget_descendants(guide.station)
-                if isinstance(widget, Gtk.Popover)
-            )
-            self.station_popover.popup()
-            GLib.timeout_add(150, self.finish_station_popup)
-        except BaseException:
-            traceback.print_exc()
-            self._close_and_quit()
-        return GLib.SOURCE_REMOVE
-
-    def finish_station_popup(self) -> bool:
-        try:
-            assert self.main_window is not None
-            station = self.main_window.guide_page.station
-            descendants = widget_descendants(station)
-            search = next(
-                widget
-                for widget in descendants
-                if isinstance(widget, Gtk.SearchEntry)
-                and widget.get_mapped()
-            )
-            station_lists = [
-                widget
-                for widget in descendants
-                if isinstance(widget, Gtk.ListView)
-                and widget.get_mapped()
-            ]
-            assert len(station_lists) == 1
-            self.station_search = search
-            self.station_popup_list = station_lists[0]
-            search.set_text("Pr")
-            GLib.timeout_add(500, self.finish_station_search)
+            assert guide.stations[selected].id == "tv.nova-sport-6"
+            assert guide.station_search.get_sensitive()
+            guide.station_search.grab_focus()
+            guide.station_search.set_text("sest")
+            GLib.timeout_add(150, self.finish_station_search)
         except BaseException:
             traceback.print_exc()
             self._close_and_quit()
@@ -520,17 +500,16 @@ class SmokeApplication(Adw.Application):
     def finish_station_search(self) -> bool:
         try:
             assert self.main_window is not None
-            filtered = self.station_popup_list.get_model()
+            guide = self.main_window.guide_page
+            filtered = guide.station.get_model()
             assert filtered is not None
             filtered_names = [
                 filtered.get_item(position).get_string()
                 for position in range(filtered.get_n_items())
             ]
-            assert filtered_names == ["Prima"], filtered_names
-            self.station_search.set_text("")
+            assert filtered_names == ["Nova Sport 6"], filtered_names
+            guide.station_search.set_text("")
 
-            guide = self.main_window.guide_page
-            self.station_popover.popdown()
             existing = set(self.get_windows())
             guide._show(guide.show)
             opened = next(
@@ -539,10 +518,10 @@ class SmokeApplication(Adw.Application):
                 if window not in existing
                 and isinstance(window, ProgramWindow)
             )
-            assert opened.station.id == "sms:Nova Sport 6"
+            assert opened.station.id == "tv.nova-sport-6"
             assert (
                 self.main_window.state.get("guide_television_station_id")
-                == "sms:Nova Sport 6"
+                == "tv.nova-sport-6"
             )
             opened.close()
 
@@ -649,6 +628,47 @@ class SmokeApplication(Adw.Application):
         finally:
             self._close_and_quit()
         return GLib.SOURCE_REMOVE
+
+    def verify_aggregate_views(self, main: MainWindow) -> None:
+        """Exercise virtual rows and original article/episode callbacks offline."""
+        for kind in ("rss", "podcast"):
+            page = main.rss_page if kind == "rss" else main.podcast_page
+            assert page.list_box._arss_store.get_n_items() == 3
+            before = main.state.subscriptions(kind)
+            aggregate = ItemsWindow(main, kind, None)
+            try:
+                result = load_all(before, self.services.fetch_feed, kind)
+                aggregate._all_loaded(result)
+                assert aggregate._displayed
+                first = aggregate._displayed[0]
+                row = list_item_child(aggregate.list_box, 0)
+                label, hint = aggregate.list_box._arss_metadata[row]
+                assert first.source.title in label
+                assert (first.article.published_text or "Date unavailable") in label
+                assert label.index(first.source.title) > label.index("\n")
+                assert hint == main.t("episode_open_hint" if kind == "podcast" else "article_open_hint")
+                if kind == "rss":
+                    with patch("arss.ui.open_uri") as open_article:
+                        aggregate.list_box._arss_callbacks[row]()
+                    open_article.assert_called_once_with(aggregate, first.article.url, main.t)
+                else:
+                    with patch.object(main, "open_player") as open_player:
+                        aggregate.list_box._arss_callbacks[row]()
+                    open_player.assert_called_once_with(first.article, first.source.title)
+                aggregate.sort.set_selected(1)
+                assert main.state.get(f"{kind}_all_sort") == "source"
+                assert aggregate.list_box.get_model().get_selected() < len(aggregate._displayed)
+                # A failing source must not hide rows from a successful one.
+                partial = AggregateResult((SourcedArticle(before[0], ARTICLE),),
+                                          ((before[0], ParsedFeed("Feed", (ARTICLE,))),),
+                                          (before[1],))
+                aggregate._all_loaded(partial)
+                assert len(aggregate._displayed) == 1
+                assert aggregate.retry.get_visible()
+                assert before[1].title in aggregate.status.get_text()
+                assert main.state.subscriptions(kind) == before
+            finally:
+                aggregate.close()
 
     def _close_and_quit(self) -> None:
         for window in self.windows:

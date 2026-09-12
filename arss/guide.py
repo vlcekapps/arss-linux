@@ -7,7 +7,7 @@ times are interpreted in Europe/Prague regardless of the host time zone.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date as Date
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -16,13 +16,22 @@ import json
 import re
 import threading
 import time
-from typing import Any, Protocol
-import unicodedata
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import quote_plus, urldefrag, urljoin, urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 
-import requests
+from .contract import ContractBundle, ContractError, ContractStation, load_embedded_contract
+from .guide_catalog import (
+    GuideCatalogParseError,
+    parse_centrum_catalog,
+    parse_rozhlas_catalog,
+)
+from .search import normalize_search_text, search_text_matches
+
+if TYPE_CHECKING:
+    import requests
 
 
 TIME_ZONE_ID = "Europe/Prague"
@@ -32,19 +41,81 @@ JSON_ACCEPT = "application/json, text/json;q=0.9, */*;q=0.1"
 XML_ACCEPT = "application/xml, text/xml;q=0.9, */*;q=0.1"
 HTML_ACCEPT = "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
 
-CENTRUM_CHANNELS_URL = "https://tvprogram.centrum.cz/api/channels"
-CENTRUM_SCHEDULE_BASE = "https://tvprogram.centrum.cz/api/broadcasting"
-CT_WEB_SCHEDULE_BASE = "https://www.ceskatelevize.cz/tv-program"
-CT_SCHEDULE_URL = "https://www.ceskatelevize.cz/services-old/programme/xml/schedule.php"
-ROZHLAS_STATIONS_URL = "https://api.rozhlas.cz/data/v2/meta/stations.json"
-ROZHLAS_SCHEDULE_BASE = "https://api.rozhlas.cz/data/v2/schedule/day"
-SMS_SCHEDULE_URL = "https://m.tv.sms.cz/"
+def _contract_source_url(
+    source_id: str,
+    *,
+    medium: str,
+    role: str,
+    source_format: str,
+) -> str:
+    source = load_embedded_contract().guide_source_by_id.get(source_id)
+    if source is None or (
+        source.medium,
+        source.role,
+        source.format,
+        source.enabled,
+    ) != (medium, role, source_format, True):
+        raise ContractError(f"Required guide source is unavailable: {source_id}")
+    return source.base_url
+
+
+CENTRUM_CHANNELS_URL = _contract_source_url(
+    "centrum.channels", medium="television", role="discovery", source_format="json"
+)
+CENTRUM_SCHEDULE_BASE = _contract_source_url(
+    "centrum.schedule", medium="television", role="schedule", source_format="json"
+)
+CT_WEB_SCHEDULE_BASE = _contract_source_url(
+    "ct.web-schedule", medium="television", role="schedule", source_format="html"
+)
+CT_SCHEDULE_URL = _contract_source_url(
+    "ct.schedule", medium="television", role="schedule", source_format="xml"
+)
+ROZHLAS_STATIONS_URL = _contract_source_url(
+    "rozhlas.stations", medium="radio", role="discovery", source_format="json"
+)
+ROZHLAS_SCHEDULE_BASE = _contract_source_url(
+    "rozhlas.schedule", medium="radio", role="schedule", source_format="json"
+)
+SMS_SCHEDULE_URL = _contract_source_url(
+    "sms.television-schedule",
+    medium="television",
+    role="schedule",
+    source_format="html",
+)
+SMS_RADIO_SCHEDULE_URL = _contract_source_url(
+    "sms.radio-schedule", medium="radio", role="schedule", source_format="html"
+)
+if SMS_RADIO_SCHEDULE_URL != SMS_SCHEDULE_URL:
+    raise ContractError("Linux requires the television and radio SMS schedule base URLs to match.")
+
+_TELEVISION_SOURCE_ORDER = (
+    "ct.schedule",
+    "ct.web-schedule",
+    "centrum.schedule",
+    "sms.television-schedule",
+)
+if tuple(
+    sorted(
+        _TELEVISION_SOURCE_ORDER,
+        key=lambda source_id: load_embedded_contract().guide_source_by_id[source_id].priority,
+    )
+) != _TELEVISION_SOURCE_ORDER:
+    raise ContractError(
+        "The guide source priorities do not preserve CT XML, web, Centrum, SMS order."
+    )
+if not (
+    load_embedded_contract().guide_source_by_id["rozhlas.schedule"].priority
+    < load_embedded_contract().guide_source_by_id["sms.radio-schedule"].priority
+):
+    raise ContractError("The guide source priorities do not preserve Rozhlas before SMS.")
 
 _WHITESPACE = re.compile(r"\s+")
 _HTML_TAG = re.compile(r"<[^>]*>", re.IGNORECASE | re.DOTALL)
 _CLOCK = re.compile(r"^\s*(\d{1,2})[.:](\d{2})(?::\d{2})?\s*$")
 _UNSAFE_XML = re.compile(br"<!\s*(?:DOCTYPE|ENTITY)\b", re.IGNORECASE)
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_EMPTY_PROVIDERS: Mapping[str, Mapping[str, str]] = MappingProxyType({})
 
 
 class GuideMedium(str, Enum):
@@ -80,69 +151,88 @@ class GuideStation:
     id: str
     name: str
     medium: GuideMedium
+    providers: Mapping[str, Mapping[str, str]] = field(
+        default_factory=lambda: _EMPTY_PROVIDERS,
+        compare=False,
+        repr=False,
+    )
+    aliases: tuple[str, ...] = field(default=(), compare=False)
 
     def __post_init__(self) -> None:
         if not self.id.strip():
             raise ValueError("Station id must not be blank.")
         if not self.name.strip():
             raise ValueError("Station name must not be blank.")
+        if any(not alias.strip() for alias in self.aliases):
+            raise ValueError("Station aliases must not be blank.")
 
 
-_TELEVISION_FAMILY_STATION_IDS = (
-    (
-        "centrum:1",
-        "centrum:2",
-        "centrum:24",
-        "centrum:18",
-        "centrum:357",
-        "centrum:358",
-    ),
-    (
-        "centrum:3",
-        "centrum:78",
-        "centrum:558",
-        "centrum:560",
-        "centrum:559",
-        "centrum:17",
-        "centrum:465",
-        *(f"sms:Nova Sport {number}" for number in range(3, 7)),
-    ),
-    (
-        "centrum:4",
-        "centrum:92",
-        "centrum:474",
-        "centrum:608",
-        "centrum:226",
-        "centrum:333",
-        "centrum:818",
-    ),
-    ("centrum:89",),
-    ("centrum:5", "centrum:6"),
-    ("centrum:7",),
-    ("centrum:11", "centrum:12"),
-    ("centrum:16", "centrum:25"),
-    (
-        *(f"sms:Oneplay Sport {number}" for number in range(1, 5)),
-        *(f"sms:Oneplay Sport MD{number}" for number in range(1, 11)),
-    ),
-)
-_TELEVISION_STATION_ID_ORDER = {
-    station_id: (family_position, station_position)
-    for family_position, station_ids in enumerate(
-        _TELEVISION_FAMILY_STATION_IDS
+def guide_contract() -> ContractBundle:
+    """Return the verified embedded contract, loaded once per process."""
+
+    return load_embedded_contract()
+
+
+def canonical_station_id(station_id: str) -> str:
+    """Migrate a provider-specific station ID to its stable contract ID."""
+
+    return guide_contract().resolve_station_id(station_id)
+
+
+def station_has_provider(station: GuideStation | Any, provider: str) -> bool:
+    """Return whether a stable or legacy station uses a provider."""
+
+    providers = getattr(station, "providers", None)
+    if isinstance(providers, Mapping) and provider in providers:
+        return True
+    contract_station = _contract_station(str(getattr(station, "id", "")))
+    return contract_station is not None and provider in contract_station.providers
+
+
+def _contract_station(station_id: str) -> ContractStation | None:
+    contract = guide_contract()
+    return contract.station_by_id.get(contract.resolve_station_id(station_id))
+
+
+def _guide_station(station: ContractStation) -> GuideStation:
+    return GuideStation(
+        id=station.id,
+        name=station.display_name,
+        medium=GuideMedium(station.medium),
+        providers=station.providers,
+        aliases=station.aliases,
     )
-    for station_position, station_id in enumerate(station_ids)
-}
+
+
+def _fallback_stations(medium: GuideMedium) -> tuple[GuideStation, ...]:
+    return tuple(
+        _guide_station(station)
+        for station in guide_contract().stations
+        if station.medium == medium.value
+    )
+
+
+def _canonical_live_station(station: GuideStation) -> GuideStation:
+    contract_station = _contract_station(station.id)
+    if contract_station is None:
+        return station
+    return GuideStation(
+        id=contract_station.id,
+        name=contract_station.display_name,
+        medium=station.medium,
+        providers=contract_station.providers,
+        aliases=contract_station.aliases,
+    )
 
 
 def _normalized_station_text(value: str) -> str:
-    decomposed = unicodedata.normalize("NFKD", value)
-    without_marks = "".join(
-        character
-        for character in decomposed
-        if not unicodedata.combining(character)
-    )
-    return _WHITESPACE.sub(" ", without_marks).strip().casefold()
+    return normalize_search_text(value)
+
+
+def station_matches_search(query: str, station: GuideStation) -> bool:
+    """Match a visible station name and its contract aliases exactly as specified."""
+
+    return search_text_matches(query, station.name, *station.aliases)
 
 
 def _natural_station_key(value: str) -> tuple[tuple[int, int | str], ...]:
@@ -154,43 +244,56 @@ def _natural_station_key(value: str) -> tuple[tuple[int, int | str], ...]:
     )
 
 
-def _television_station_family(name: str) -> int:
+def _television_station_family(name: str) -> str | None:
     normalized = _normalized_station_text(name)
     words = set(re.findall(r"[a-z0-9]+", normalized))
     if normalized.startswith("ct"):
-        return 0
+        return "ct"
     if "nova" in words or normalized.startswith("nova"):
-        return 1
+        return "nova"
     if "prima" in words or normalized.startswith("prima"):
-        return 2
+        return "prima"
     if "barrandov" in words:
-        return 3
+        return "barrandov"
     if normalized.startswith("hbo"):
-        return 4
+        return "hbo"
     if "cinemax" in words:
-        return 5
+        return "cinemax"
     if "animal" in words or "discovery" in words:
-        return 6
+        return "discovery"
     if "eurosport" in words or normalized.startswith("eurosport"):
-        return 7
+        return "eurosport"
     if "oneplay" in words or normalized.startswith("oneplay"):
-        return 8
-    return len(_TELEVISION_FAMILY_STATION_IDS)
+        return "oneplay"
+    return None
 
 
 def _television_station_sort_key(station: GuideStation) -> tuple[Any, ...]:
-    known = _TELEVISION_STATION_ID_ORDER.get(station.id)
+    known = _contract_station(station.id)
     if known is not None:
-        family_position, station_position = known
         return (
-            family_position,
+            known.sort_order * 2,
             0,
-            station_position,
+            0,
             (),
-            _normalized_station_text(station.id),
+            known.id,
         )
+    television = tuple(
+        value
+        for value in guide_contract().stations
+        if value.medium == GuideMedium.TELEVISION.value
+    )
+    family = _television_station_family(station.name)
+    family_end = max(
+        (
+            value.sort_order
+            for value in television
+            if family is not None and value.family == family
+        ),
+        default=max(value.sort_order for value in television),
+    )
     return (
-        _television_station_family(station.name),
+        family_end * 2 + 1,
         1,
         0,
         _natural_station_key(station.name),
@@ -204,10 +307,27 @@ def order_guide_stations(
 ) -> list[GuideStation]:
     """Return stations in desktop order without separating names from IDs."""
 
-    result = list(stations)
-    if GuideMedium(medium) is not GuideMedium.TELEVISION:
-        return result
-    return sorted(result, key=_television_station_sort_key)
+    selected_medium = GuideMedium(medium)
+    result = [
+        station
+        for station in stations
+        if GuideMedium(station.medium) is selected_medium
+    ]
+    if selected_medium is GuideMedium.TELEVISION:
+        return sorted(result, key=_television_station_sort_key)
+    return sorted(
+        result,
+        key=lambda station: (
+            (0, known.sort_order, (), known.id)
+            if (known := _contract_station(station.id)) is not None
+            else (
+                1,
+                0,
+                _natural_station_key(station.name),
+                _normalized_station_text(station.id),
+            )
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,7 +434,10 @@ class GuideHttpClient:
             raise ValueError("maximum_response_bytes must be positive")
         if maximum_redirects < 0:
             raise ValueError("maximum_redirects must not be negative")
-        self.session = session or requests.Session()
+        import requests as requests_module
+
+        self._requests = requests_module
+        self.session = session or requests_module.Session()
         self._owns_session = session is None
         self._cancelled = threading.Event()
         self._response_lock = threading.RLock()
@@ -349,7 +472,7 @@ class GuideHttpClient:
                     allow_redirects=False,
                     stream=True,
                 )
-            except requests.RequestException as exception:
+            except self._requests.RequestException as exception:
                 raise GuideNetworkException(
                     "Could not open the guide connection."
                 ) from exception
@@ -430,7 +553,7 @@ class GuideHttpClient:
                         f"The guide response exceeds {self.maximum_response_bytes} bytes."
                     )
                 chunks.append(chunk)
-        except requests.RequestException as exception:
+        except self._requests.RequestException as exception:
             raise GuideNetworkException("Could not read the guide response.") from exception
         return b"".join(chunks)
 
@@ -592,21 +715,14 @@ def _json_int(value: Any) -> int | None:
 
 
 def parse_centrum_stations(payload: bytes) -> list[GuideStation]:
-    root = _json_object(payload, "Centrum guide")
-    result: list[GuideStation] = []
-    known: set[str] = set()
-    for value in root.values():
-        if not isinstance(value, Mapping):
-            continue
-        station_id = _json_text(value.get("id"))
-        name = clean_text(_json_text(value.get("name")))
-        if station_id is None or not name:
-            continue
-        full_id = f"centrum:{station_id}"
-        if full_id not in known:
-            known.add(full_id)
-            result.append(GuideStation(full_id, name, GuideMedium.TELEVISION))
-    return result
+    try:
+        stations = parse_centrum_catalog(payload)
+    except GuideCatalogParseError as exception:
+        raise GuideParseException(str(exception)) from exception
+    return [
+        GuideStation(station.legacy_id, station.display_name, GuideMedium.TELEVISION)
+        for station in stations
+    ]
 
 
 def parse_centrum_program(payload: bytes, channel_id: str) -> list[GuideProgramEntry]:
@@ -641,26 +757,14 @@ def parse_centrum_program(payload: bytes, channel_id: str) -> list[GuideProgramE
 
 
 def parse_rozhlas_stations(payload: bytes) -> list[GuideStation]:
-    root = _json_object(payload, "Czech Radio")
-    values = root.get("data")
-    if not isinstance(values, list):
-        raise GuideParseException(
-            "The Czech Radio station catalog has no data array."
-        )
-    result: list[GuideStation] = []
-    known: set[str] = set()
-    for value in values:
-        if not isinstance(value, Mapping):
-            continue
-        station_id = _json_text(value.get("id"))
-        name = clean_text(_json_text(value.get("name")))
-        if station_id is None or not name:
-            continue
-        full_id = f"rozhlas:{station_id}"
-        if full_id not in known:
-            known.add(full_id)
-            result.append(GuideStation(full_id, name, GuideMedium.RADIO))
-    return result
+    try:
+        stations = parse_rozhlas_catalog(payload)
+    except GuideCatalogParseError as exception:
+        raise GuideParseException(str(exception)) from exception
+    return [
+        GuideStation(station.legacy_id, station.display_name, GuideMedium.RADIO)
+        for station in stations
+    ]
 
 
 def parse_rozhlas_program(payload: bytes, station_id: str) -> list[GuideProgramEntry]:
@@ -1114,9 +1218,9 @@ class GuideRepository:
 
     def fallback_stations(self, medium: GuideMedium) -> list[GuideStation]:
         if medium is GuideMedium.TELEVISION:
-            return order_guide_stations(TELEVISION_FALLBACK, medium)
+            return order_guide_stations(_fallback_stations(medium), medium)
         if medium is GuideMedium.RADIO:
-            return order_guide_stations(RADIO_FALLBACK, medium)
+            return order_guide_stations(_fallback_stations(medium), medium)
         raise ValueError(f"Unsupported medium: {medium}")
 
     def close(self) -> None:
@@ -1140,7 +1244,8 @@ class GuideRepository:
             live = []
         if not live:
             return self.fallback_stations(medium)
-        merged = {station.id: station for station in live}
+        canonical_live = [_canonical_live_station(station) for station in live]
+        merged = {station.id: station for station in canonical_live}
         for station in self.fallback_stations(medium):
             merged.setdefault(station.id, station)
         return order_guide_stations(merged.values(), medium)
@@ -1157,16 +1262,17 @@ class GuideRepository:
     def _load_television(
         self, station: GuideStation, date: GuideDate
     ) -> list[GuideProgramEntry]:
+        contract_station = _contract_station(station.id)
+        providers = station.providers or (
+            contract_station.providers if contract_station is not None else {}
+        )
+        if providers:
+            return self._load_contract_television(providers, date)
         if station.id.startswith("centrum:"):
             channel = station.id.removeprefix("centrum:")
             if not channel.isdigit():
                 raise ValueError(f"Invalid Centrum station id: {station.id}")
-            ct_channel = CT_CHANNELS.get(channel)
-            return (
-                self._load_ct_then_centrum(ct_channel, channel, date)
-                if ct_channel
-                else self._load_centrum(channel, date)
-            )
+            return self._load_centrum(channel, date)
         if station.id.startswith("sms:"):
             sms_name = station.id.removeprefix("sms:").strip()
             if not sms_name:
@@ -1174,9 +1280,49 @@ class GuideRepository:
             return self._load_sms(sms_name, date)
         raise ValueError(f"Unsupported television station id: {station.id}")
 
+    def _load_contract_television(
+        self,
+        providers: Mapping[str, Mapping[str, str]],
+        date: GuideDate,
+    ) -> list[GuideProgramEntry]:
+        last_failure: GuideException | None = None
+        ct = providers.get("ct")
+        if ct is not None:
+            channel = ct["channel"]
+            for loader in (self._load_ct_xml, self._load_ct_web):
+                try:
+                    entries = loader(channel, date)
+                    if entries:
+                        return entries
+                except GuideException as exception:
+                    last_failure = exception
+        centrum = providers.get("centrum")
+        if centrum is not None:
+            try:
+                entries = self._load_centrum(centrum["id"], date)
+                if entries:
+                    return entries
+            except GuideException as exception:
+                last_failure = exception
+        sms = providers.get("sms")
+        if sms is not None:
+            try:
+                return self._load_sms(sms["name"], date)
+            except GuideException as exception:
+                last_failure = exception
+        if last_failure is not None:
+            raise last_failure
+        return []
+
     def _load_radio(
         self, station: GuideStation, date: GuideDate
     ) -> list[GuideProgramEntry]:
+        contract_station = _contract_station(station.id)
+        providers = station.providers or (
+            contract_station.providers if contract_station is not None else {}
+        )
+        if providers:
+            return self._load_contract_radio(providers, date)
         if station.id.startswith("sms:"):
             sms_name = station.id.removeprefix("sms:").strip()
             if not sms_name:
@@ -1197,7 +1343,7 @@ class GuideRepository:
                 return official
         except GuideException as exception:
             primary_failure = exception
-        sms_name = RADIO_SMS_NAMES.get(station_id, station.name)
+        sms_name = station.name
         try:
             return self._load_sms(sms_name, date)
         except GuideException as fallback_failure:
@@ -1205,28 +1351,38 @@ class GuideRepository:
                 raise fallback_failure from primary_failure
             raise
 
-    def _load_ct_then_centrum(
-        self, ct_channel: str, centrum_channel: str, date: GuideDate
+    def _load_contract_radio(
+        self,
+        providers: Mapping[str, Mapping[str, str]],
+        date: GuideDate,
     ) -> list[GuideProgramEntry]:
         primary_failure: GuideException | None = None
-        try:
-            official_web = self._load_ct_web(ct_channel, date)
-            if official_web:
-                return official_web
-        except GuideException as exception:
-            primary_failure = exception
-        try:
-            official_xml = self._load_ct_xml(ct_channel, date)
-            if official_xml:
-                return official_xml
-        except GuideException as exception:
-            primary_failure = exception
-        try:
-            return self._load_centrum(centrum_channel, date)
-        except GuideException as fallback_failure:
-            if primary_failure is not None:
-                raise fallback_failure from primary_failure
-            raise
+        rozhlas = providers.get("rozhlas")
+        if rozhlas is not None:
+            station_id = rozhlas["id"]
+            try:
+                official = parse_rozhlas_program(
+                    self.data_source.get(
+                        self._rozhlas_url(station_id, date),
+                        JSON_ACCEPT,
+                    ),
+                    station_id,
+                )
+                if official:
+                    return official
+            except GuideException as exception:
+                primary_failure = exception
+        sms = providers.get("sms")
+        if sms is not None:
+            try:
+                return self._load_sms(sms["name"], date)
+            except GuideException as fallback_failure:
+                if primary_failure is not None:
+                    raise fallback_failure from primary_failure
+                raise
+        if primary_failure is not None:
+            raise primary_failure
+        return []
 
     def _load_ct_web(self, channel: str, date: GuideDate) -> list[GuideProgramEntry]:
         url = f"{CT_WEB_SCHEDULE_BASE}/{date.ct()}/"
@@ -1307,166 +1463,6 @@ class GuideRepository:
         )
 
 
-def _tv(station_id: str, name: str) -> GuideStation:
-    return GuideStation(f"centrum:{station_id}", name, GuideMedium.TELEVISION)
-
-
-def _sms_tv(name: str) -> GuideStation:
-    return GuideStation(f"sms:{name}", name, GuideMedium.TELEVISION)
-
-
-def _radio(station_id: str, name: str) -> GuideStation:
-    return GuideStation(f"rozhlas:{station_id}", name, GuideMedium.RADIO)
-
-
-def _sms_radio(name: str, display_name: str | None = None) -> GuideStation:
-    return GuideStation(f"sms:{name}", display_name or name, GuideMedium.RADIO)
-
-
-CT_CHANNELS = {
-    "1": "ct1",
-    "2": "ct2",
-    "18": "ct4",
-    "24": "ct24",
-    "357": "ct5",
-    "358": "ct6",
-}
-
-TELEVISION_FALLBACK: tuple[GuideStation, ...] = (
-    _tv("1", "ČT1"),
-    _tv("2", "ČT2"),
-    _tv("24", "ČT24"),
-    _tv("18", "ČT sport"),
-    _tv("357", "ČT :D"),
-    _tv("358", "ČT art"),
-    _tv("3", "Nova"),
-    _tv("4", "Prima"),
-    _tv("78", "Nova Cinema"),
-    _tv("558", "Nova Action"),
-    _tv("560", "Nova Fun"),
-    _tv("559", "Nova Gold"),
-    _tv("92", "Prima Cool"),
-    _tv("474", "Prima MAX"),
-    _tv("608", "Prima Krimi"),
-    _tv("226", "Prima Love"),
-    _tv("333", "Prima ZOOM"),
-    _tv("818", "CNN Prima News"),
-    _tv("89", "Barrandov"),
-    _tv("5", "HBO"),
-    _tv("6", "HBO 2"),
-    _tv("7", "Cinemax"),
-    _tv("11", "Animal Planet"),
-    _tv("12", "Discovery Channel"),
-    _tv("16", "Eurosport"),
-    _tv("25", "Eurosport 2"),
-    _tv("17", "Nova Sport 1"),
-    _tv("465", "Nova Sport 2"),
-    *tuple(_sms_tv(f"Nova Sport {number}") for number in range(3, 7)),
-    *tuple(_sms_tv(f"Oneplay Sport {number}") for number in range(1, 5)),
-    *tuple(_sms_tv(f"Oneplay Sport MD{number}") for number in range(1, 11)),
-)
-
-RADIO_FALLBACK: tuple[GuideStation, ...] = (
-    _radio("radiozurnal", "Radiožurnál"),
-    _radio("dvojka", "Dvojka"),
-    _radio("vltava", "Vltava"),
-    _radio("plus", "Plus"),
-    _radio("radiozurnal-sport", "Radiožurnál Sport"),
-    _radio("radiowave", "Radio Wave"),
-    _radio("radiojunior", "Rádio Junior"),
-    _radio("d-dur", "D-dur"),
-    _radio("jazz", "Jazz"),
-    _radio("pohoda", "Český rozhlas Pohoda"),
-    _radio("cro7", "Radio Prague International"),
-    _radio("brno", "Brno"),
-    _radio("cb", "České Budějovice"),
-    _radio("hradec", "Hradec Králové"),
-    _radio("kv", "Karlovy Vary"),
-    _radio("liberec", "Liberec"),
-    _radio("olomouc", "Olomouc"),
-    _radio("ostrava", "Ostrava"),
-    _radio("pardubice", "Pardubice"),
-    _radio("plzen", "Plzeň"),
-    _radio("regina", "Rádio Praha"),
-    _radio("strednicechy", "Střední Čechy"),
-    _radio("sever", "Sever"),
-    _radio("vysocina", "Vysočina"),
-    _radio("zlin", "Zlín"),
-    *tuple(
-        _sms_radio(name)
-        for name in (
-            "SRO1 - Slovensko",
-            "SRO2 - Regina Stred",
-            "SRO2 - Regina Východ",
-            "SRO2 - Regina Západ",
-            "SRO3 - Devín",
-            "SRO4 - Radio FM",
-            "SRO5 - Patria",
-            "SRO6 - Slovakia International",
-            "SRO7 - Klasika",
-            "SRO8 - Litera",
-            "BBC Czech",
-            "BBC Radio",
-            "Classic FM",
-            "Country Radio",
-            "Dance Radio",
-            "Evropa 2",
-            "Fajn radio",
-            "Frekvence 1",
-            "Impuls",
-            "Kiss 98",
-            "Kiss Morava",
-            "Radio 1",
-            "Radio7",
-            "Radio Beat",
-            "Rádio Blaník",
-            "Radio Čas",
-            "Radio Proglas",
-            "Europa 2",
-            "Fun rádio",
-            "Jemne Melodie",
-            "Lumen",
-            "Rádio Anténa Rock",
-            "Radio Expres",
-            "Radio Junior (sk)",
-            "Rádio Liptov",
-            "Rádio SiTy",
-            "Rádio VIVA",
-            "Rádio Vlna",
-            "Radio WOW",
-        )
-    ),
-)
-
-RADIO_SMS_NAMES = {
-    "radiozurnal": "ČRo Radiožurnál",
-    "dvojka": "ČRo Dvojka",
-    "vltava": "ČRo Vltava",
-    "plus": "ČRo Plus",
-    "radiozurnal-sport": "Radiožurnál Sport",
-    "radiowave": "ČRo Radio Wave",
-    "radiojunior": "ČRo Rádio Junior",
-    "d-dur": "ČRo D-dur",
-    "jazz": "ČRo Jazz",
-    "pohoda": "ČRo Pohoda",
-    "cro7": "ČRo Radio Praha",
-    "brno": "ČRo Brno",
-    "cb": "ČRo České Budějovice",
-    "hradec": "ČRo Hradec Králové",
-    "kv": "ČRo Karlovy Vary",
-    "liberec": "ČRo Liberec",
-    "olomouc": "ČRo Olomouc",
-    "ostrava": "ČRo Ostrava",
-    "pardubice": "ČRo Pardubice",
-    "plzen": "ČRo Plzeň",
-    "regina": "ČRo Regina DAB Praha",
-    "strednicechy": "ČRo Region",
-    "sever": "ČRo Sever",
-    "vysocina": "ČRo Vysočina",
-    "zlin": "ČRo Zlín",
-}
-
-
 __all__ = [
     "GuideDataSource",
     "GuideDate",
@@ -1480,11 +1476,11 @@ __all__ = [
     "GuideRepository",
     "GuideStation",
     "GuideTime",
-    "RADIO_FALLBACK",
-    "TELEVISION_FALLBACK",
+    "canonical_station_id",
     "clean_html",
     "clean_text",
     "guide_date_at",
+    "guide_contract",
     "https_url",
     "infer_missing_ends",
     "local_millis",
@@ -1497,6 +1493,8 @@ __all__ = [
     "parse_iso_millis",
     "parse_rozhlas_program",
     "parse_rozhlas_stations",
+    "station_has_provider",
+    "station_matches_search",
     "parse_sms_program",
     "stable_id",
 ]

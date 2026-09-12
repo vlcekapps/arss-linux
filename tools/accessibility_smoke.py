@@ -82,6 +82,66 @@ def safe_action_count(node: Atspi.Accessible) -> int:
         return 0
 
 
+def selected_value_text(node: Atspi.Accessible) -> str:
+    """Return the human-readable value exposed by a selection control."""
+
+    # Modern GTK exports GtkDropDown's selected string as VALUE_TEXT.  This is
+    # the primary AT-SPI representation consumed by Orca; retain the selection
+    # interface below for older toolkit versions and other native controls.
+    try:
+        value = node.get_value_iface()
+        if value is not None:
+            text = (value.get_text() or "").strip()
+            if text:
+                return text
+    except (GLib.Error, AttributeError):
+        pass
+
+    try:
+        selection = node.get_selection_iface()
+        child = (
+            selection.get_selected_child(0)
+            if selection is not None
+            and selection.get_n_selected_children() == 1
+            else None
+        )
+    except GLib.Error:
+        child = None
+    if child is not None:
+        name = safe_name(child).strip()
+        if name:
+            return name
+        nested_name = next(
+            (
+                safe_name(descendant).strip()
+                for descendant in walk(child)[1:]
+                if safe_name(descendant).strip()
+            ),
+            "",
+        )
+        if nested_name:
+            return nested_name
+
+    # GtkDropDown uses a GtkLabel inside its closed button to present the
+    # selected item.  GTK's AT-SPI backend exposes that visible text child even
+    # on releases where neither Value nor Selection is registered on the
+    # COMBO_BOX itself.  This is the same native tree available to Orca.
+    for descendant in walk(node)[1:]:
+        if safe_role(descendant) not in {Atspi.Role.LABEL, Atspi.Role.TEXT}:
+            continue
+        name = safe_name(descendant).strip()
+        if not name:
+            continue
+        try:
+            states = descendant.get_state_set()
+            if not states.contains(Atspi.StateType.SHOWING):
+                continue
+        except GLib.Error:
+            continue
+        return name
+    return ""
+
+
 def is_native_menu_button_wrapper(
     node: Atspi.Accessible,
     name: str,
@@ -351,6 +411,138 @@ def is_native_list_item(node: Atspi.Accessible) -> bool:
     )
 
 
+def is_native_dropdown_display_proxy(node: Atspi.Accessible) -> bool:
+    """Recognize GtkDropDown's selected-item renderer, not a tab stop."""
+
+    # GTK's private GtkListItemWidget renderer is GENERIC/PANEL and inherits
+    # FOCUSABLE even though GtkDropDown.grab_focus() targets the toggle button.
+    # Keep this exception tied to that exact native ancestor chain.
+    if (
+        safe_role(node) is not Atspi.Role.PANEL
+        or safe_name(node).strip()
+        or safe_action_count(node) != 1
+    ):
+        return False
+    try:
+        states = node.get_state_set()
+        if (
+            not states.contains(Atspi.StateType.FOCUSABLE)
+            or not states.contains(Atspi.StateType.SHOWING)
+            or states.contains(Atspi.StateType.FOCUSED)
+        ):
+            return False
+        current = node.get_parent()
+    except GLib.Error:
+        return False
+
+    display_children = children(node)
+    if (
+        len(display_children) != 1
+        or safe_role(display_children[0]) is not Atspi.Role.PANEL
+        or safe_name(display_children[0]).strip()
+    ):
+        return False
+
+    toggle_name = ""
+    for _depth in range(8):
+        if current is None:
+            return False
+        role = safe_role(current)
+        name = safe_name(current).strip()
+        if role is Atspi.Role.PANEL:
+            if toggle_name or name:
+                return False
+            try:
+                panel_states = current.get_state_set()
+                if (
+                    panel_states.contains(Atspi.StateType.FOCUSABLE)
+                    or not panel_states.contains(Atspi.StateType.SHOWING)
+                ):
+                    return False
+            except GLib.Error:
+                return False
+        elif role is Atspi.Role.TOGGLE_BUTTON:
+            if toggle_name or not name or safe_action_count(current) < 1:
+                return False
+            try:
+                toggle_states = current.get_state_set()
+                if not (
+                    toggle_states.contains(Atspi.StateType.FOCUSABLE)
+                    and toggle_states.contains(Atspi.StateType.SHOWING)
+                ):
+                    return False
+            except GLib.Error:
+                return False
+            toggle_name = name
+        elif role is Atspi.Role.COMBO_BOX:
+            if not toggle_name or name != toggle_name:
+                return False
+            try:
+                owner_states = current.get_state_set()
+            except GLib.Error:
+                return False
+            return (
+                owner_states.contains(Atspi.StateType.SHOWING)
+                and owner_states.contains(Atspi.StateType.HAS_POPUP)
+                and bool(selected_value_text(current))
+            )
+        else:
+            return False
+        try:
+            current = current.get_parent()
+        except GLib.Error:
+            return False
+    return False
+
+
+def focus_node_diagnostics(node: Atspi.Accessible) -> dict[str, object]:
+    """Describe a rejected focus node without relying on toolkit internals."""
+
+    ancestry: list[dict[str, object]] = []
+    current: Atspi.Accessible | None = node
+    for _depth in range(10):
+        if current is None:
+            break
+        try:
+            states = current.get_state_set()
+            state_flags = {
+                name: states.contains(state)
+                for name, state in {
+                    "focusable": Atspi.StateType.FOCUSABLE,
+                    "focused": Atspi.StateType.FOCUSED,
+                    "showing": Atspi.StateType.SHOWING,
+                    "visible": Atspi.StateType.VISIBLE,
+                    "sensitive": Atspi.StateType.SENSITIVE,
+                    "has_popup": Atspi.StateType.HAS_POPUP,
+                }.items()
+            }
+            interfaces = {
+                "actions": safe_action_count(current),
+                "selection": current.is_selection(),
+                "value": current.is_value(),
+                "text": current.is_text(),
+            }
+            parent = current.get_parent()
+        except GLib.Error:
+            break
+        ancestry.append(
+            {
+                "role": str(safe_role(current)),
+                "name": safe_name(current),
+                "states": state_flags,
+                "interfaces": interfaces,
+            }
+        )
+        current = parent
+    return {
+        "ancestry": ancestry,
+        "children": [
+            (str(safe_role(child)), safe_name(child))
+            for child in children(node)
+        ],
+    }
+
+
 def inspect_focus_contract(application: Atspi.Accessible) -> None:
     """Reject silent wrapper stops and controls without an operable interface."""
 
@@ -382,13 +574,17 @@ def inspect_focus_contract(application: Atspi.Accessible) -> None:
     for node in walk(application):
         try:
             states = node.get_state_set()
-            if not states.contains(Atspi.StateType.FOCUSABLE):
+            if not states.contains(
+                Atspi.StateType.FOCUSABLE
+            ) or not states.contains(Atspi.StateType.SHOWING):
                 continue
             has_popup = states.contains(Atspi.StateType.HAS_POPUP)
         except GLib.Error:
             continue
         role = safe_role(node)
         name = safe_name(node).strip()
+        if is_native_dropdown_display_proxy(node):
+            continue
         if not name:
             failures.append((str(role), name, "missing name"))
             continue
@@ -444,7 +640,27 @@ def inspect_focus_contract(application: Atspi.Accessible) -> None:
         if not operable:
             failures.append((str(role), name, "no action/value/text interface"))
     if failures:
-        raise AssertionError(f"Invalid keyboard focus stops: {failures}")
+        rejected_nodes: list[dict[str, object]] = []
+        for node in walk(application):
+            if (
+                safe_role(node) is not Atspi.Role.PANEL
+                or safe_name(node).strip()
+            ):
+                continue
+            try:
+                states = node.get_state_set()
+                if not (
+                    states.contains(Atspi.StateType.FOCUSABLE)
+                    and states.contains(Atspi.StateType.SHOWING)
+                ):
+                    continue
+            except GLib.Error:
+                continue
+            rejected_nodes.append(focus_node_diagnostics(node))
+        raise AssertionError(
+            f"Invalid keyboard focus stops: {failures}; "
+            f"unnamed panel diagnostics: {rejected_nodes}"
+        )
 
 
 def inspect_settings(application: Atspi.Accessible) -> None:
@@ -947,6 +1163,144 @@ def inspect_invalid_form(application: Atspi.Accessible) -> None:
     if not statuses:
         raise AssertionError("Invalid input has no AT-visible textual explanation")
 
+
+def inspect_guide_fixture(environment: dict[str, str]) -> None:
+    """Exercise the guide search through the real AT-SPI text interface."""
+
+    process = subprocess.Popen(
+        [sys.executable, str(PROJECT / "tools" / "accessibility_fixture_app.py")],
+        cwd=PROJECT,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        application = None
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and process.poll() is None:
+            application = find_application()
+            if application is not None and any(
+                safe_role(node) is Atspi.Role.HEADING
+                and safe_name(node)
+                in {"Television and radio guide", "Televizní a rozhlasový program"}
+                for node in walk(application)
+            ):
+                break
+            application = None
+            time.sleep(0.1)
+        if process.poll() is not None:
+            output, error = process.communicate()
+            raise RuntimeError(
+                f"Guide accessibility fixture exited early ({process.returncode})\n{output}\n{error}"
+            )
+        if application is None:
+            raise RuntimeError("The guide accessibility fixture did not appear")
+        nodes = wait_until(
+            application,
+            lambda current: any(
+                safe_role(node) is Atspi.Role.ENTRY
+                and safe_name(node) in {"Search stations", "Hledat stanici"}
+                and node.get_state_set().contains(Atspi.StateType.SENSITIVE)
+                for node in current
+            ),
+        )
+        search = next(
+            node
+            for node in nodes
+            if safe_role(node) is Atspi.Role.ENTRY
+            and safe_name(node) in {"Search stations", "Hledat stanici"}
+        )
+        try:
+            initial_nodes = wait_until(
+                application,
+                lambda current: any(
+                    safe_role(node) is Atspi.Role.COMBO_BOX
+                    and safe_name(node) in {"Station", "Stanice"}
+                    and selected_value_text(node) == "Prima"
+                    for node in current
+                ),
+            )
+        except AssertionError as error:
+            details = [
+                (
+                    safe_name(node),
+                    selected_value_text(node),
+                    [
+                        (str(safe_role(child)), safe_name(child))
+                        for child in walk(node)[1:20]
+                    ],
+                )
+                for node in walk(application)
+                if safe_role(node) is Atspi.Role.COMBO_BOX
+            ]
+            raise AssertionError(
+                f"The initial station selection was not exposed: {details}"
+            ) from error
+        initial_station = next(
+            node
+            for node in initial_nodes
+            if safe_role(node) is Atspi.Role.COMBO_BOX
+            and safe_name(node) in {"Station", "Stanice"}
+        )
+        try:
+            states = search.get_state_set()
+            editable = search.is_editable_text()
+            text_interface = search.is_text()
+        except GLib.Error as error:
+            raise AssertionError("Station search has no usable AT-SPI interfaces") from error
+        if not (
+            states.contains(Atspi.StateType.FOCUSABLE)
+            and editable
+            and text_interface
+        ):
+            raise AssertionError("Station search is not a focusable editable AT-SPI text control")
+        editable_interface = search.get_editable_text_iface()
+        text_interface = search.get_text_iface()
+        if editable_interface is None or text_interface is None:
+            raise AssertionError("Station search did not return its AT-SPI text interfaces")
+        try:
+            search.grab_focus()
+        except GLib.Error:
+            # A bare Xvfb session has no window manager to arbitrate global
+            # focus.  The FOCUSABLE state above remains mandatory; the actual
+            # release gate is the AT-SPI EditableText mutation and read-back.
+            pass
+        if not editable_interface.set_text_contents("sest"):
+            raise AssertionError("AT-SPI could not edit the station search")
+        if Atspi.Text.get_text(text_interface, 0, -1) != "sest":
+            raise AssertionError("Station search did not expose its edited AT-SPI text")
+        nodes = wait_until(
+            application,
+            lambda current: any(
+                safe_role(node) is Atspi.Role.COMBO_BOX
+                and safe_name(node) in {"Station", "Stanice"}
+                and node.get_state_set().contains(Atspi.StateType.SENSITIVE)
+                and selected_value_text(node) == "Nova Sport 6"
+                for node in current
+            ),
+        )
+        station = next(
+            node
+            for node in nodes
+            if safe_role(node) is Atspi.Role.COMBO_BOX
+            and safe_name(node) in {"Station", "Stanice"}
+        )
+        if selected_value_text(station) != "Nova Sport 6":
+            raise AssertionError(
+                "Alias search did not select the sole expected station, Nova Sport 6"
+            )
+        inspect_focus_contract(application)
+    finally:
+        process.terminate()
+        try:
+            _output, error = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            _output, error = process.communicate(timeout=5)
+        if error.strip():
+            print(error, file=sys.stderr)
+
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="arss-atspi-") as temporary:
         environment = os.environ.copy()
@@ -996,8 +1350,6 @@ def main() -> int:
             inspect_settings(application)
             inspect_invalid_form(application)
             inspect_focus_contract(application)
-            print("AT-SPI smoke test passed")
-            return 0
         finally:
             process.terminate()
             try:
@@ -1007,6 +1359,9 @@ def main() -> int:
                 _output, error = process.communicate(timeout=5)
             if error.strip():
                 print(error, file=sys.stderr)
+        inspect_guide_fixture(environment)
+        print("AT-SPI smoke test passed")
+        return 0
 
 
 if __name__ == "__main__":

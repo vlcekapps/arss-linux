@@ -1,0 +1,78 @@
+{
+  "$schema": "../schemas/guide-sources.schema.json",
+  "schemaVersion": "1.0.0",
+  "sources": [
+    {
+      "id": "centrum.channels",
+      "medium": "television",
+      "role": "discovery",
+      "baseUrl": "https://tvprogram.centrum.cz/api/channels",
+      "format": "json",
+      "priority": 20,
+      "enabled": true
+    },
+    {
+      "id": "ct.schedule",
+      "medium": "television",
+      "role": "schedule",
+      "baseUrl": "https://www.ceskatelevize.cz/services-old/programme/xml/schedule.php",
+      "format": "xml",
+      "priority": 10,
+      "enabled": true
+    },
+    {
+      "id": "ct.web-schedule",
+      "medium": "television",
+      "role": "schedule",
+      "baseUrl": "https://www.ceskatelevize.cz/tv-program",
+      "format": "html",
+      "priority": 15,
+      "enabled": true
+    },
+    {
+      "id": "centrum.schedule",
+      "medium": "television",
+      "role": "schedule",
+      "baseUrl": "https://tvprogram.centrum.cz/api/broadcasting",
+      "format": "json",
+      "priority": 20,
+      "enabled": true
+    },
+    {
+      "id": "sms.television-schedule",
+      "medium": "television",
+      "role": "schedule",
+      "baseUrl": "https://m.tv.sms.cz/",
+      "format": "html",
+      "priority": 90,
+      "enabled": true
+    },
+    {
+      "id": "rozhlas.stations",
+      "medium": "radio",
+      "role": "discovery",
+      "baseUrl": "https://api.rozhlas.cz/data/v2/meta/stations.json",
+      "format": "json",
+      "priority": 10,
+      "enabled": true
+    },
+    {
+      "id": "rozhlas.schedule",
+      "medium": "radio",
+      "role": "schedule",
+      "baseUrl": "https://api.rozhlas.cz/data/v2/schedule/day",
+      "format": "json",
+      "priority": 10,
+      "enabled": true
+    },
+    {
+      "id": "sms.radio-schedule",
+      "medium": "radio",
+      "role": "schedule",
+      "baseUrl": "https://m.tv.sms.cz/",
+      "format": "html",
+      "priority": 90,
+      "enabled": true
+    }
+  ]
+}

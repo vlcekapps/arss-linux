@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vlcekapps/arss-contract/schemas/version.schema.json",
+  "title": "ARSS contract version",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "contractVersion", "releasedAt", "minimumConsumerVersion", "reference"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "contractVersion": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "releasedAt": {"type": "string", "format": "date"},
+    "minimumConsumerVersion": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "tag", "commit"],
+      "properties": {
+        "repository": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "tag": {"type": "string", "minLength": 1},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    }
+  }
+}

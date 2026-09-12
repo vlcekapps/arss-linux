@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from pathlib import Path
 import unittest
 
@@ -13,6 +14,8 @@ from arss.guide import (
     GuideRepository,
     GuideStation,
     GuideTime,
+    canonical_station_id,
+    guide_contract,
     order_guide_stations,
     parse_centrum_program,
     parse_centrum_stations,
@@ -21,6 +24,8 @@ from arss.guide import (
     parse_rozhlas_program,
     parse_rozhlas_stations,
     parse_sms_program,
+    station_has_provider,
+    station_matches_search,
 )
 
 
@@ -141,59 +146,109 @@ class GuideRepositoryTests(unittest.TestCase):
         television = repository.fallback_stations(GuideMedium.TELEVISION)
         radio = repository.fallback_stations(GuideMedium.RADIO)
         expected_ids = [
-            "centrum:1",
-            "centrum:2",
-            "centrum:24",
-            "centrum:18",
-            "centrum:357",
-            "centrum:358",
-            "centrum:3",
-            "centrum:78",
-            "centrum:558",
-            "centrum:560",
-            "centrum:559",
-            "centrum:17",
-            "centrum:465",
-            *(f"sms:Nova Sport {number}" for number in range(3, 7)),
-            "centrum:4",
-            "centrum:92",
-            "centrum:474",
-            "centrum:608",
-            "centrum:226",
-            "centrum:333",
-            "centrum:818",
-            "centrum:89",
-            "centrum:5",
-            "centrum:6",
-            "centrum:7",
-            "centrum:11",
-            "centrum:12",
-            "centrum:16",
-            "centrum:25",
-            *(f"sms:Oneplay Sport {number}" for number in range(1, 5)),
-            *(f"sms:Oneplay Sport MD{number}" for number in range(1, 11)),
+            station.id
+            for station in guide_contract().stations
+            if station.medium == "television"
         ]
         self.assertEqual(expected_ids, [station.id for station in television])
         self.assertEqual(
             [
-                (f"sms:Nova Sport {number}", f"Nova Sport {number}")
+                (f"tv.nova-sport-{number}", f"Nova Sport {number}")
                 for number in range(3, 7)
             ],
             [
                 (station.id, station.name)
                 for station in television
-                if station.id.startswith("sms:Nova Sport ")
+                if station.id in {f"tv.nova-sport-{number}" for number in range(3, 7)}
             ],
         )
         self.assertTrue(
-            any(station.id == "rozhlas:radiozurnal" for station in radio)
+            any(station.id == "radio.radiozurnal" for station in radio)
         )
-        self.assertTrue(any(station.id == "sms:Frekvence 1" for station in radio))
+        self.assertEqual(
+            guide_contract().station_by_id["tv.ct-sport"].aliases,
+            next(
+                station.aliases
+                for station in television
+                if station.id == "tv.ct-sport"
+            ),
+        )
+        self.assertEqual(
+            "radio.frekvence-1",
+            canonical_station_id("sms:Frekvence 1"),
+        )
+        self.assertTrue(
+            station_has_provider(
+                GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION),
+                "ct",
+            )
+        )
+        self.assertTrue(
+            station_has_provider(
+                GuideStation("centrum:1", "ČT1", GuideMedium.TELEVISION),
+                "ct",
+            )
+        )
 
         merged = GuideRepository(
             _FakeSource(lambda _url, _accept: fixture("centrum_channels.json"))
         ).refresh_stations(GuideMedium.TELEVISION)
         self.assertEqual(expected_ids, [station.id for station in merged])
+
+    def test_radio_sort_uses_contract_order_and_places_unknowns_last(self) -> None:
+        known = {
+            station.id: station
+            for station in GuideRepository(
+                _FakeSource(lambda _url, _accept: b"")
+            ).fallback_stations(GuideMedium.RADIO)
+        }
+        unknown_z = GuideStation("future:z", "Žurnál Z", GuideMedium.RADIO)
+        unknown_a = GuideStation("future:a", "Alpha", GuideMedium.RADIO)
+        scrambled = [
+            unknown_z,
+            known["radio.dvojka"],
+            GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION),
+            unknown_a,
+            known["radio.radiozurnal"],
+        ]
+
+        self.assertEqual(
+            [
+                known["radio.radiozurnal"],
+                known["radio.dvojka"],
+                unknown_a,
+                unknown_z,
+            ],
+            order_guide_stations(scrambled, GuideMedium.RADIO),
+        )
+        live = GuideRepository(
+            _FakeSource(
+                lambda _url, _accept: json.dumps(
+                    {
+                        "data": [
+                            {"id": "dvojka", "name": "Provider Dvojka"},
+                            {"id": "radiozurnal", "name": "Provider Radiožurnál"},
+                        ]
+                    }
+                ).encode("utf-8")
+            )
+        ).refresh_stations(GuideMedium.RADIO)
+        self.assertEqual(
+            ["radio.radiozurnal", "radio.dvojka"],
+            [station.id for station in live[:2]],
+        )
+
+    def test_station_search_uses_contract_aliases_and_exact_term_semantics(self) -> None:
+        station = next(
+            station
+            for station in GuideRepository(
+                _FakeSource(lambda _url, _accept: b"")
+            ).fallback_stations(GuideMedium.TELEVISION)
+            if station.id == "tv.ct-sport"
+        )
+        self.assertTrue(station_matches_search("ct4 spo", station))
+        self.assertTrue(station_matches_search("T SPORT", station))
+        self.assertFalse(station_matches_search("por xyz", station))
 
     def test_television_sort_keeps_station_names_attached_to_ids(self) -> None:
         ct = GuideStation("centrum:1", "Živé ČT1", GuideMedium.TELEVISION)
@@ -266,23 +321,43 @@ class GuideRepositoryTests(unittest.TestCase):
         ):
             self.assertIs(expected_station, actual_station)
 
-    def test_public_ct_page_is_preferred_and_cached_across_instances(self) -> None:
+    def test_public_ct_page_is_secondary_and_cached_across_instances(self) -> None:
         def response(url: str, _accept: str) -> bytes:
+            if "/services-old/" in url:
+                return b"<errors><error>rate limit</error></errors>"
             if "/tv-program/" in url:
                 return fixture("ct_web_program.html")
-            raise AssertionError(f"Unexpected fallback request: {url}")
+            raise AssertionError(f"Unexpected request: {url}")
 
         source = _FakeSource(response)
         guide_date = GuideDate(2026, 7, 22)
         ct1 = GuideRepository(source).load_program(
-            GuideStation("centrum:1", "ČT1", GuideMedium.TELEVISION), guide_date
+            GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION), guide_date
         )
         ct2 = GuideRepository(source).load_program(
-            GuideStation("centrum:2", "ČT2", GuideMedium.TELEVISION), guide_date
+            GuideStation("tv.ct2", "ČT2", GuideMedium.TELEVISION), guide_date
         )
         self.assertTrue(ct1 and ct2)
         self.assertEqual(1, sum("/tv-program/" in url for url in source.urls))
-        self.assertFalse(any("services-old" in url for url in source.urls))
+        self.assertEqual(1, sum("services-old" in url for url in source.urls))
+        self.assertIn("services-old", source.urls[0])
+
+    def test_official_ct_xml_is_preferred_before_the_web_fallback(self) -> None:
+        def response(url: str, _accept: str) -> bytes:
+            if "/services-old/" in url:
+                return fixture("ct_program.xml")
+            raise AssertionError(f"Unexpected fallback request: {url}")
+
+        source = _FakeSource(response)
+        entries = GuideRepository(source).load_program(
+            GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION),
+            GuideDate(2026, 7, 22),
+        )
+
+        self.assertEqual(2, len(entries))
+        self.assertTrue(entries[0].audio_description)
+        self.assertEqual(1, sum("services-old" in url for url in source.urls))
+        self.assertFalse(any("/tv-program/" in url for url in source.urls))
 
     def test_total_ct_fallback_throttles_xml_and_marks_ad_unknown(self) -> None:
         centrum = fixture("centrum_program.json").replace(b'"3":', b'"1":', 1)
@@ -298,7 +373,7 @@ class GuideRepositoryTests(unittest.TestCase):
 
         source = _FakeSource(response)
         repository = GuideRepository(source)
-        station = GuideStation("centrum:1", "ČT1", GuideMedium.TELEVISION)
+        station = GuideStation("tv.ct1", "ČT1", GuideMedium.TELEVISION)
         first = repository.load_program(station, GuideDate(2026, 7, 22))
         second = repository.load_program(station, GuideDate(2026, 7, 22))
         self.assertTrue(first and second)
@@ -313,7 +388,7 @@ class GuideRepositoryTests(unittest.TestCase):
             else (_ for _ in ()).throw(AssertionError(url))
         )
         entries = GuideRepository(centrum_source).load_program(
-            GuideStation("centrum:3", "Nova", GuideMedium.TELEVISION),
+            GuideStation("tv.nova", "Nova", GuideMedium.TELEVISION),
             GuideDate(2026, 7, 22),
         )
         self.assertEqual(2, len(entries))
@@ -326,7 +401,7 @@ class GuideRepositoryTests(unittest.TestCase):
         )
         television_entries = GuideRepository(television_source).load_program(
             GuideStation(
-                "sms:Nova Sport 6",
+                "tv.nova-sport-6",
                 "Nova Sport 6",
                 GuideMedium.TELEVISION,
             ),
@@ -350,7 +425,7 @@ class GuideRepositoryTests(unittest.TestCase):
 
         radio_source = _FakeSource(radio_response)
         radio_entries = GuideRepository(radio_source).load_program(
-            GuideStation("rozhlas:radiozurnal", "Radiožurnál", GuideMedium.RADIO),
+            GuideStation("radio.radiozurnal", "Radiožurnál", GuideMedium.RADIO),
             GuideDate(2026, 7, 22),
         )
         self.assertEqual(2, len(radio_entries))
